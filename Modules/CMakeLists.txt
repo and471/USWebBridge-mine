@@ -1,0 +1,10 @@
+
+set(module_dirs
+  Sensors
+  USStreamingCommon
+)
+
+foreach(module_dir ${module_dirs})
+  add_subdirectory(${module_dir})
+  INCLUDE_DIRECTORIES(${module_dir})
+endforeach()

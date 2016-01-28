@@ -1,0 +1,3 @@
+// the configured options and settings for AGTools
+#define USWebS_VERSION_MAJOR @USWebS_VERSION_MAJOR@
+#define USWebS_VERSION_MINOR @USWebS_VERSION_MINOR@

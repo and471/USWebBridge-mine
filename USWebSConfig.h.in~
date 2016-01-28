@@ -1,0 +1,3 @@
+// the configured options and settings for AGTools
+#define AGT_VERSION_MAJOR @AGT_VERSION_MAJOR@
+#define AGT_VERSION_MINOR @AGT_VERSION_MINOR@
