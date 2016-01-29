@@ -52,7 +52,13 @@ void DNLImageSource::GenerateImagesThread(){
 
         this->m_dnlImageSignal(a);
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        double framerate = a->acquisitionFrameRate()[0];
+        double At = 50; // default value, ms
+        if (framerate>0){
+            At= 1.0/framerate*1000.0;
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds((int) At));
 
     }
     this->m_generating_thread->join();
