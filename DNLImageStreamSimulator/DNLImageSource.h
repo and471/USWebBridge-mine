@@ -28,6 +28,7 @@ public:
     void RegisterDNLImageHandler(DNLImageHandlerSlotType slot);
 
     void GenerateImages();
+    void CleanThreads();
     void Stop();
 
     DNLImageSignalType m_dnlImageSignal;

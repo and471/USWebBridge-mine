@@ -63,6 +63,7 @@ void DNLImageReader::Read(){
         */
 
         //vtkImageLayers[i] = dat;//reader->GetOutput();
+        //vtkImageLayers[i] = vtkSmartPointer<vtkImageData>::New();
         vtkImageLayers[i] = ReadFromFile(layer_filenames[i]);
 
         /// Read meta data ///
@@ -286,6 +287,7 @@ vtkSmartPointer<vtkImageData> DNLImageReader::ReadFromFile(std::string &filename
 
     } else {
         // Not implemented for compressed data yet
+        std::cout << "Not implemented for compressed data yet"<<std::endl;
     }
 
     return image;

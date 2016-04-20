@@ -34,6 +34,7 @@ int main(int argc, char *argv[])
     std::cout << "Press enter to terminate whenever you want!" << std::endl;
     std::string request;
     std::getline(std::cin, request);
+    dnlIS->CleanThreads();
 
     //server_active = false;
     std::cout << "Done!"<<std::endl;

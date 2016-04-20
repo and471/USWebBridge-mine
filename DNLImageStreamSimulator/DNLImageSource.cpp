@@ -30,6 +30,7 @@ void DNLImageSource::GenerateImages(){
 
     this->m_generating_thread = new std::thread(&DNLImageSource::GenerateImagesThread, this);
 
+
 }
 
 void DNLImageSource::GenerateImagesThread(){
@@ -61,9 +62,13 @@ void DNLImageSource::GenerateImagesThread(){
         std::this_thread::sleep_for(std::chrono::milliseconds((int) At));
 
     }
-    this->m_generating_thread->join();
-    delete this->m_generating_thread;
+}
 
+void DNLImageSource::CleanThreads(){
+    if (this->m_generating_thread->joinable()){
+        this->m_generating_thread->join();
+    }
+    delete this->m_generating_thread;
 }
 
 void DNLImageSource::Stop(){
