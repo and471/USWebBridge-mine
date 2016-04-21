@@ -26,3 +26,17 @@
 *.exe
 *.out
 *.app
+
+
+# CMake Files
+*.cmake
+Makefile
+.project
+.cproject
+build/
+CMakeFiles/
+*Config.h
+ITKIOFactoryRegistration/
+
+# Misc
+*~

@@ -33,12 +33,14 @@ find_package(VTK REQUIRED)
 INCLUDE(${VTK_USE_FILE})
 INCLUDE(${ITK_USE_FILE})
 
-
+set (SRCS
+ DNLImageSource.cpp
+ DNLFileImageSource.cpp
+)
 
 add_executable(DNLImageStreamSimulator
                 MACOSX_BUNDLE
                 main_DNLImageSteamSimulator.cpp
-                DNLImageSource.cpp
                 ${SRCS}
                 )
 

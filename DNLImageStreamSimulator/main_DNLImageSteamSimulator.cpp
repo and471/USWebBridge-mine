@@ -2,7 +2,9 @@
 #include <stdio.h>
 #include <string>
 
+
 #include "DNLImageSource.h"
+#include "DNLFileImageSource.h"
 #include <Modules/USStreamingCommon/DNLImage.h>
 
 void imaging_handler(DNLImage::Pointer imag);
@@ -24,21 +26,20 @@ int main(int argc, char *argv[])
 
     std::string folder = argv[1];
 
-    DNLImageSource *dnlIS = new DNLImageSource();
-    dnlIS->SetFolder(folder);
-    dnlIS->RegisterDNLImageHandler(&imaging_handler); /// This will start producing signals
+    DNLImageSource *dnlIS = new DNLFileImageSource(folder);
+    dnlIS->connect(&imaging_handler); /// This will start producing signals
     //boost::bind(&MyOtherClass::MyFunction, boost::ref(myobject), _1) // Use this above if your function is in other class
 
-    dnlIS->GenerateImages();
+    dnlIS->start();
 
     std::cout << "Press enter to terminate whenever you want!" << std::endl;
     std::string request;
     std::getline(std::cin, request);
-    dnlIS->CleanThreads();
+
+    dnlIS->stop();
 
     //server_active = false;
     std::cout << "Done!"<<std::endl;
-    dnlIS->Stop();
 
 
     /****************************************************************************
