@@ -73,7 +73,7 @@ void DNLImageReader::Read(){
 
         char output[100];
 
-
+        int inttellg_  ;
         if (myfile.is_open()) {
             while (!myfile.eof()) {
                 myfile >> output;
