@@ -188,10 +188,11 @@ DNLImage::DNLImage(std::vector< vtkSmartPointer<vtkImageData> > &vtkImageLayers,
 
     this->m_vtkImageLayers.resize(vtkImageLayers.size());
     for (int i=0; i<this->m_vtkImageLayers.size(); ++i){
-        this->m_vtkImageLayers[i] = vtkSmartPointer<vtkImageData>::New();
-        //this->m_vtkImageLayers[i]->DeepCopy(vtkImageLayers[i]);
+        //this->m_vtkImageLayers[i] = vtkSmartPointer<vtkImageData>::New();
         this->m_vtkImageLayers[i] = vtkImageLayers[i];
     }
+
+
 
 }
 

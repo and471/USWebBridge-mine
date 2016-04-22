@@ -4,6 +4,8 @@
 
 #include "DNLImageSource.h"
 #include <Modules/USStreamingCommon/DNLImage.h>
+#include <vtkMetaImageWriter.h>
+#include <vtkJPEGWriter.h>
 
 void imaging_handler(DNLImage::Pointer imag);
 
@@ -62,8 +64,21 @@ void imaging_handler(DNLImage::Pointer imag){
 
 
 
-    double spacing[3];
-    imag->vtkImageLayers()[0]->GetSpacing(spacing);
+    //double spacing[3];
+    //imag->vtkImageLayers()[0]->GetSpacing(spacing);
 
-    std::cout << "ImageSpacing: " << spacing[0]<<", "<< spacing[1]<<std::endl;
+    std::stringstream ss;
+    ss<< "/home/ag09_local/data/iFIND/phantom/tmp/"<< "data_"<< imag->GetVTKImage()->GetDataDimension()
+      <<"D_" << imag->GetDNLTimeStamp()<<".mhd";
+
+      std::cout << "image: " << *(imag->GetVTKImage())<<std::endl;
+
+        vtkSmartPointer<vtkMetaImageWriter>     writer  = vtkSmartPointer<vtkMetaImageWriter>::New();
+        //vtkSmartPointer<vtkJPEGWriter>     writer  = vtkSmartPointer<vtkJPEGWriter>::New();
+        writer->SetFileName(ss.str().data());
+        writer->SetCompression(false);
+        writer->SetInputData(imag->GetVTKImage());
+        writer->Write();
+
+
 }
