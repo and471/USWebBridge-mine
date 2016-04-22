@@ -25,7 +25,7 @@ public:
         double Offset[3] ={0,0,0};
         double CenterOfRotation[3]={0,0,0};
         double ElementSpacing[3]={1,1,1};
-        int DimSize[3]={0,0,0};
+        int DimSize[3]={1,1,1};
         std::string AnatomicalOrientation="???";
         std::string ElementType = "MET_UCHAR";
         std::string ElementDataFile ="";

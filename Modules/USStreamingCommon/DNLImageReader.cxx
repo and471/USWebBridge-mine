@@ -54,16 +54,6 @@ void DNLImageReader::Read(){
     for (int i=0; i<nlayers; i++){
 
         /// Read image data ///
-
-        /*
-        vtkSmartPointer<vtkMetaImageReader> reader_ = vtkSmartPointer<vtkMetaImageReader>::New();
-        reader_->SetFileName(layer_filenames[i].data());
-        //reader->Update();
-        //vtkImageLayers[i] = reader->GetOutput();
-        */
-
-        //vtkImageLayers[i] = dat;//reader->GetOutput();
-        //vtkImageLayers[i] = vtkSmartPointer<vtkImageData>::New();
         vtkImageLayers[i] = ReadFromFile(layer_filenames[i]);
 
         /// Read meta data ///
@@ -73,7 +63,6 @@ void DNLImageReader::Read(){
 
         char output[100];
 
-        int inttellg_  ;
         if (myfile.is_open()) {
             while (!myfile.eof()) {
                 myfile >> output;
@@ -150,7 +139,6 @@ void DNLImageReader::Read(){
                                                    dnlTimestamp, dnlLayerTimeTagInt, localTimeStampInt, trackerTimeStampInt, forceTimeStampInt, transducerTimeStampInt,
                                                    acqfr, txfr)
                                       );
-
 
 }
 
@@ -238,7 +226,7 @@ vtkSmartPointer<vtkImageData> DNLImageReader::ReadFromFile(std::string &filename
     myfile.close();
 
 
-    vtkSmartPointer<vtkImageData> image ;//= vtkSmartPointer<vtkImageData>::New();
+    vtkSmartPointer<vtkImageData> image = vtkSmartPointer<vtkImageData>::New();
 
     /// Read raw data
     if (!header.CompressedData){
@@ -275,16 +263,10 @@ vtkSmartPointer<vtkImageData> DNLImageReader::ReadFromFile(std::string &filename
             importer->Update();
             image = importer->GetOutput();
 
-            delete buffer;
+            //delete buffer;  // If deleted, problem when writing!!!
+
 
         }
-
-
-
-        //UInt32 out = *(reinterpret_cast<DicomReader::UInt32 *>(data));
-
-
-
     } else {
         // Not implemented for compressed data yet
         std::cout << "Not implemented for compressed data yet"<<std::endl;

@@ -76,8 +76,7 @@ void imaging_handler(DNLImage::Pointer image){
     int *dims = new int[3];
     dims = image->GetVTKImage()->GetDimensions();
 
-//    if (N !=2)
-//        return;
+
       // Create a 100x100 image to save into the jpeg file
       int extent[6] = { 0, 99, 0, 99, 0, 0 };
       vtkSmartPointer<vtkImageCanvasSource2D> imageSource =
@@ -107,16 +106,4 @@ void imaging_handler(DNLImage::Pointer image){
        writer->SetInputData(image->GetVTKImage(0));
       writer->Write();
 
-    double spacing[3];
-    image->GetVTKImage(0)->GetSpacing(spacing);
-
-    std::cout << "ImageSpacing: " << spacing[0]<<", "<< spacing[1]<<std::endl;
-/*
-
-    vtkSmartPointer<vtkJPEGWriter> writer =
-        vtkSmartPointer<vtkJPEGWriter>::New();
-      writer->SetFileName("/home/andrew/Temp/hello.jpg");
-      writer->SetInputData(image->GetVTKImage(0));
-      writer->Write();
-      */
 }
