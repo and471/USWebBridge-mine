@@ -19,7 +19,7 @@ public:
     void onImage(DNLImage::Pointer image);
 
 private:
-    GstElement *pipeline, *appsrc, *jpegdec, *conv, *payloader, *udpsink, *videoenc;
+    GstElement *pipeline, *appsrc, *pngdec, *conv, *payloader, *udpsink, *videoenc;
     DNLFrameExchange* exchange;
     DNLImageSource* dnl_image_source;
 

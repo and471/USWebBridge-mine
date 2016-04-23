@@ -37,6 +37,6 @@ build/
 CMakeFiles/
 *Config.h
 ITKIOFactoryRegistration/
-
+CMakeLists.txt.user
 # Misc
 *~
