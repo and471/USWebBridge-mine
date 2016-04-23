@@ -12,20 +12,17 @@
 class DNLImageSource {
 
 public:
-    DNLImageSource();
-    ~DNLImageSource();
 
-    /// Define signals
-    typedef  boost::signals2::signal<void (DNLImage::Pointer )> DNLImageSignalType;
-    typedef DNLImageSignalType::slot_type DNLImageHandlerSlotType;
+    void connect(void (*handler)(DNLImage::Pointer, void*), void* data);
+    void onImage(DNLImage::Pointer image);
 
-    void connect(DNLImageHandlerSlotType slot);
     virtual void start() = 0;
     virtual void stop() = 0;
 
-protected:
-    DNLImageSignalType signal;
+private:
 
+    void (*image_handler)(DNLImage::Pointer, void*) = nullptr;
+    void* image_handler_data = nullptr;
 
 };
 

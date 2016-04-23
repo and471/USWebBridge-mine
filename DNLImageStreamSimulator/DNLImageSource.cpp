@@ -5,10 +5,13 @@
 #include <boost/date_time/posix_time/ptime.hpp>
 #include <Modules/USStreamingCommon/DNLImageReader.h>
 
-DNLImageSource::DNLImageSource() {}
-DNLImageSource::~DNLImageSource() {}
+void DNLImageSource::connect(void (*handler)(DNLImage::Pointer, void*), void* data) {
+    image_handler = handler;
+    image_handler_data = data;
+}
 
-
-void DNLImageSource::connect(DNLImageHandlerSlotType slot) {
-    this->signal.connect(slot);
+void DNLImageSource::onImage(DNLImage::Pointer image) {
+    if (image_handler != nullptr) {
+        image_handler(image, image_handler_data);
+    }
 }
