@@ -56,6 +56,7 @@ set (SRCS
  DNLFileImageSource.cpp
  DNLFrameExchange.cpp
  DNLImageExtractor.cpp
+ UltrasoundImagePipeline.cpp
 )
 
 add_executable(DNLImageStreamSimulator

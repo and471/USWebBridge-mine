@@ -5,7 +5,6 @@
 #include <string>
 
 #include <vtkSmartPointer.h>
-#include <vtkImageCanvasSource2D.h>
 
 #include "DNLImageSource.h"
 #include "DNLFileImageSource.h"
@@ -17,12 +16,6 @@
 void imaging_handler(DNLImage::Pointer imag);
 
 static GMainLoop *loop;
-static char* data;
-static char* data2;
-static guint size;
-static guint size2;
-static int i = 0;
-
 static DNLFrameExchange* exchange = new DNLFrameExchange();
 
 static void
@@ -30,12 +23,9 @@ cb_need_data (GstAppSrc *appsrc,
           guint       unused_size,
           gpointer    user_data)
 {
-  printf("cb_need_data\n");
-
   static GstClockTime timestamp = 0;
   GstBuffer *buffer;
   GstFlowReturn ret;
-
 
   char* d;
   size_t s;
@@ -44,14 +34,6 @@ cb_need_data (GstAppSrc *appsrc,
   buffer = gst_buffer_new_allocate (NULL, s, NULL);
   gst_buffer_fill(buffer, 0, (guchar*)d, s);
 
-  /*if (i % 2 == 0) {
-    buffer = gst_buffer_new_allocate (NULL, size, NULL);
-    gst_buffer_fill(buffer, 0, (guchar*)data, size);
-  } else {
-    buffer = gst_buffer_new_allocate (NULL, size2, NULL);
-    gst_buffer_fill(buffer, 0, (guchar*)data2, size2);
-  }*/
-
   GST_BUFFER_PTS (buffer) = timestamp;
   GST_BUFFER_DURATION (buffer) = gst_util_uint64_scale_int (1, GST_SECOND, 20);
   timestamp += GST_BUFFER_DURATION (buffer);
@@ -59,12 +41,9 @@ cb_need_data (GstAppSrc *appsrc,
   ret = gst_app_src_push_buffer(appsrc, buffer);
 
   if (ret != GST_FLOW_OK) {
-    /* something wrong, stop pushing */
-    printf("wrrrong\n");
+    fprintf(stderr, "Gstreamer Error\n");
     g_main_loop_quit (loop);
   }
-
-  i++;
 }
 
 int main(int argc, char *argv[])
@@ -84,25 +63,6 @@ int main(int argc, char *argv[])
     //boost::bind(&MyOtherClass::MyFunction, boost::ref(myobject), _1) // Use this above if your function is in other class
 
     dnlIS->start();
-
-
-    FILE *f = fopen("frame1.jpg", "rb");
-    fseek(f, 0, SEEK_END);
-    size = (guint)ftell(f);
-    fseek(f, 0, SEEK_SET);  //same as rewind(f);
-    data = (char*) malloc(size);
-    fread(data, size, sizeof(char), f);
-    fclose(f);
-
-    FILE *f2 = fopen("frame2.jpg", "rb");
-    fseek(f2, 0, SEEK_END);
-    size2 = (guint)ftell(f2);
-    fseek(f2, 0, SEEK_SET);  //same as rewind(f);
-
-    data2 = (char*) malloc(size2);
-    fread(data2, size2, sizeof(char), f2);
-    fclose(f2);
-
 
     GstElement *pipeline, *appsrc, *jpegdec, *conv, *payloader, *udpsink, *videoenc;
 
