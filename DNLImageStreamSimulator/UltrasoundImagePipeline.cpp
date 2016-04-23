@@ -29,7 +29,7 @@ void UltrasoundImagePipeline::createGstPipeline() {
     // Create pipeline elements
     pipeline = gst_pipeline_new("pipeline");
     appsrc = gst_element_factory_make("appsrc", "source");
-    jpegdec = gst_element_factory_make("jpegdec", "j");
+    jpegdec = gst_element_factory_make("pngdec", "j");
     conv = gst_element_factory_make("videoconvert", "conv");
     videoenc = gst_element_factory_make("avenc_mpeg4", "ffenc_mpeg4");
     payloader = gst_element_factory_make("rtpmp4vpay", "rtpmp4vpay");
@@ -40,7 +40,7 @@ void UltrasoundImagePipeline::createGstPipeline() {
             "stream-type", 0,
             "is-live", TRUE,
             "format", GST_FORMAT_TIME,
-            "caps", gst_caps_from_string("image/jpeg"), NULL);
+            "caps", gst_caps_from_string("image/png"), NULL);
     g_object_set(G_OBJECT(payloader),
             "config-interval", 5, NULL);
     g_object_set(G_OBJECT(udpsink),
@@ -77,10 +77,12 @@ void UltrasoundImagePipeline::onAppSrcNeedData(GstAppSrc* appsrc, guint size) {
 
     char* d;
     size_t s;
-    DNLImageExtractor::get_jpeg(exchange->get_frame(), &d, &s);
+    DNLImageExtractor::get_png(exchange->get_frame(), &d, &s);
 
     buffer = gst_buffer_new_allocate (NULL, s, NULL);
     gst_buffer_fill(buffer, 0, (guchar*)d, s);
+
+    free(d);
 
     GST_BUFFER_PTS (buffer) = timestamp;
     GST_BUFFER_DURATION (buffer) = gst_util_uint64_scale_int (1, GST_SECOND, 20);

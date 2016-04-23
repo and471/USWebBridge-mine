@@ -6,7 +6,7 @@
 class DNLImageExtractor
 {
 public:
-    static void get_jpeg(DNLImage::Pointer image, char** data, size_t* size);
+    static void get_png(DNLImage::Pointer image, char** data, size_t* size);
 private:
     DNLImageExtractor();
 };

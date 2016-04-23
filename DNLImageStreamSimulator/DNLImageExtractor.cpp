@@ -1,27 +1,18 @@
 #include "DNLImageExtractor.h"
-#include <vtkJPEGWriter.h>
+#include <vtkPNGWriter.h>
 #include <vtkUnsignedCharArray.h>
 #include <cstdio>
 
-void DNLImageExtractor::get_jpeg(DNLImage::Pointer image, char** data, size_t* size) {
-    vtkSmartPointer<vtkJPEGWriter> writer = vtkSmartPointer<vtkJPEGWriter>::New();
-    //writer->SetWriteToMemory(true);
-
-    writer->SetFileName("/tmp/frame.jpg");
+void DNLImageExtractor::get_png(DNLImage::Pointer image, char** data, size_t* size) {
+    vtkSmartPointer<vtkPNGWriter> writer = vtkSmartPointer<vtkPNGWriter>::New();
+    writer->SetWriteToMemory(true);
     writer->SetInputData(image->GetVTKImage(0));
     writer->Write();
 
-    //TODO: use SetWriteToMemory
-    /*vtkUnsignedCharArray* d = writer->GetResult();
-    *data = (char*) d->GetVoidPointer(1);
-    *size = d->GetActualMemorySize() * 1024;*/
-
-    FILE *f = fopen("/tmp/frame.jpg", "rb");
-    fseek(f, 0, SEEK_END);
-    *size = (size_t) ftell(f);
-    fseek(f, 0, SEEK_SET);  //same as rewind(f);
+    // Move JPEG wrote in memory to new malloced location
+    vtkUnsignedCharArray* d = writer->GetResult();
+    *size = (size_t)(d->GetSize()*d->GetDataTypeSize());
     *data = (char*) malloc(*size);
-    fread(*data, *size, sizeof(char), f);
-    fclose(f);
+    memcpy(*data, (char*)d->GetVoidPointer(0), *size);
 }
 
