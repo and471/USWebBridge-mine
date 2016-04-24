@@ -1,6 +1,7 @@
 #include "DNLFileImageSource.h"
 #include <map>
 #include <ctime>
+#include <cstdlib>
 #include <boost/date_time.hpp>
 #include <boost/date_time/posix_time/ptime.hpp>
 #include <Modules/USStreamingCommon/DNLImageReader.h>
@@ -20,31 +21,33 @@ void DNLFileImageSource::start() {
 }
 
 void DNLFileImageSource::GenerateImagesThread() {
-
+    // Generate images from each file, and when all are exhausted, start again
     std::vector<PathType>::const_iterator filename;
-    for (filename = this->filenames.begin(); filename != this->filenames.end(); filename++){
+    //while(true) {
+        for (filename = this->filenames.begin(); filename != this->filenames.end(); filename++){
 
-        if (this->stop_image_generation){
-            break;
+            if (this->stop_image_generation){
+                break;
+            }
+
+            std::string name = filename->string();
+
+            DNLImageReader::Pointer reader = DNLImageReader::Pointer(new DNLImageReader());
+            reader->SetFilename(name);
+            reader->Read();
+
+            DNLImage::Pointer image = reader->GetDNLImage();
+            this->onImage(image);
+
+            double framerate = image->acquisitionFrameRate()[0];
+            double At = 50; // default value, ms
+            if (framerate>0){
+                At= 1.0/framerate*1000.0;
+            }
+
+            std::this_thread::sleep_for(std::chrono::milliseconds((int) At));
         }
-
-        std::string name = filename->string();
-
-        DNLImageReader::Pointer reader = DNLImageReader::Pointer(new DNLImageReader());
-        reader->SetFilename(name);
-        reader->Read();
-
-        DNLImage::Pointer image = reader->GetDNLImage();
-        this->onImage(image);
-
-        double framerate = image->acquisitionFrameRate()[0];
-        double At = 50; // default value, ms
-        if (framerate>0){
-            At= 1.0/framerate*1000.0;
-        }
-
-        std::this_thread::sleep_for(std::chrono::milliseconds((int) At));
-    }
+    //}
 }
 
 void DNLFileImageSource::stop() {

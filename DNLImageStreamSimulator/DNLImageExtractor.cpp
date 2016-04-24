@@ -10,7 +10,7 @@ void DNLImageExtractor::get_png(DNLImage::Pointer image, char** data, size_t* si
     writer->Write();
 
     // Move JPEG wrote in memory to new malloced location
-    vtkUnsignedCharArray* d = writer->GetResult();
+    vtkSmartPointer<vtkUnsignedCharArray> d = writer->GetResult();
     *size = (size_t)(d->GetSize()*d->GetDataTypeSize());
     *data = (char*) malloc(*size);
     memcpy(*data, (char*)d->GetVoidPointer(0), *size);

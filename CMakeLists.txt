@@ -56,6 +56,11 @@ if (BUILD_SIMULATOR)
 	add_subdirectory(DNLImageStreamSimulator)
 endif() 
 
+option (BUILD_JANUS_PLUGIN   "Build Janus Plugin" ON)
+if (BUILD_JANUS_PLUGIN)
+    add_subdirectory(JanusPlugin)
+endif()
+
 
 #-----------------------------------------------------------------------------
 option(BUILD_DOXYGENDOC "Build Doxygen documentation" OFF)

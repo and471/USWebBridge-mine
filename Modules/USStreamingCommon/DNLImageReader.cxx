@@ -226,7 +226,7 @@ vtkSmartPointer<vtkImageData> DNLImageReader::ReadFromFile(std::string &filename
     myfile.close();
 
 
-    vtkSmartPointer<vtkImageData> image = vtkSmartPointer<vtkImageData>::New();
+    vtkSmartPointer<vtkImageData> image;
 
     /// Read raw data
     if (!header.CompressedData){
@@ -241,12 +241,12 @@ vtkSmartPointer<vtkImageData> DNLImageReader::ReadFromFile(std::string &filename
 
         int NBYTES;
         if (!strcmp(header.ElementType.data(),"MET_UCHAR")){
-            NBYTES = length*sizeof(uint8_t);
+            NBYTES = length*sizeof(char);
             char * buffer = new char[NBYTES];
             std::ifstream is(path + std::string("/") +header.ElementDataFile, ios::binary );
             if (is) {
                 // read data as a block:
-                is.read (buffer,length);
+                is.read (buffer, length);
                 is.close();
             }
 
@@ -259,11 +259,11 @@ vtkSmartPointer<vtkImageData> DNLImageReader::ReadFromFile(std::string &filename
             importer->SetDataScalarTypeToUnsignedChar();
             importer->SetNumberOfScalarComponents(1);
 
-            importer->SetImportVoidPointer(&(buffer[0])); // Check if the DNL is sending any offset or something
+            importer->SetImportVoidPointer(buffer, 0); // Check if the DNL is sending any offset or something
             importer->Update();
             image = importer->GetOutput();
 
-            //delete buffer;  // If deleted, problem when writing!!!
+            //delete [] buffer;  // If deleted, problem when writing!!!
 
 
         }

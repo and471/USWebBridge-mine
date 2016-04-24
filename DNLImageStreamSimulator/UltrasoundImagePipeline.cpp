@@ -5,7 +5,9 @@
 #include "DNLImageExtractor.h"
 #include "DNLFrameExchange.h"
 #include <Modules/USStreamingCommon/DNLImage.h>
+#include <glib.h>
 
+/* Wrappers for signals calling instance methods */
 static void onAppSrcNeedDataWrapper(GstAppSrc* appsrc, guint size, gpointer data);
 void onAppSrcNeedDataWrapper(GstAppSrc* appsrc, guint size, gpointer data) {
     UltrasoundImagePipeline* pipeline = (UltrasoundImagePipeline*) data;
@@ -19,9 +21,15 @@ void onImageWrapper(DNLImage::Pointer image, void* data) {
 }
 
 
-UltrasoundImagePipeline::UltrasoundImagePipeline() {
+UltrasoundImagePipeline::UltrasoundImagePipeline(GMainLoop* loop) {
+    this->loop = loop;
     exchange = new DNLFrameExchange();
     createGstPipeline();
+}
+
+UltrasoundImagePipeline::~UltrasoundImagePipeline() {
+    delete exchange;
+    gst_object_unref(pipeline); // frees pipeline and all elements
 }
 
 void UltrasoundImagePipeline::createGstPipeline() {
@@ -35,11 +43,13 @@ void UltrasoundImagePipeline::createGstPipeline() {
     udpsink = gst_element_factory_make("udpsink", "udpsink");
 
     // Set properties
+    GstCaps* png_caps = gst_caps_from_string("image/png");
     g_object_set(G_OBJECT (appsrc),
             "stream-type", 0,
             "is-live", TRUE,
             "format", GST_FORMAT_TIME,
-            "caps", gst_caps_from_string("image/png"), NULL);
+            "caps", png_caps, NULL);
+    gst_caps_unref(png_caps);
 
     gst_preset_load_preset(GST_PRESET(videoenc), "Profile Realtime");
     g_object_set(G_OBJECT(udpsink),
@@ -76,21 +86,24 @@ void UltrasoundImagePipeline::onAppSrcNeedData(GstAppSrc* appsrc, guint size) {
     size_t s;
     DNLImageExtractor::get_png(exchange->get_frame(), &d, &s);
 
-    GstBuffer *buffer = gst_buffer_new_allocate (NULL, s, NULL);
-    gst_buffer_fill(buffer, 0, (guchar*)d, s);
-    free(d);
+    GstBuffer* buffer = gst_buffer_new_wrapped(d, s);
 
     GST_BUFFER_PTS(buffer) = timestamp;
-    GST_BUFFER_DURATION(buffer) = gst_util_uint64_scale_int(1, GST_SECOND, 20);
+    GST_BUFFER_DURATION(buffer) = gst_util_uint64_scale_int(1, GST_SECOND, getFPS());
     timestamp += GST_BUFFER_DURATION(buffer);
 
     GstFlowReturn ret = gst_app_src_push_buffer(appsrc, buffer);
     if (ret != GST_FLOW_OK) {
         fprintf(stderr, "Gstreamer Error\n");
     }
+    //gst_buffer_unref(buffer);
 }
 
 void UltrasoundImagePipeline::onImage(DNLImage::Pointer image) {
     exchange->add_frame(image);
+}
+
+int UltrasoundImagePipeline::getFPS() {
+    return fps;
 }
 

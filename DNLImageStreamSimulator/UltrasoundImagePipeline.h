@@ -5,11 +5,13 @@
 #include <gst/app/gstappsrc.h>
 #include "DNLImageSource.h"
 #include "DNLFrameExchange.h"
+#include <glib.h>
 
 class UltrasoundImagePipeline
 {
 public:
-    UltrasoundImagePipeline();
+    UltrasoundImagePipeline(GMainLoop* loop);
+    ~UltrasoundImagePipeline();
 
     void setDNLImageSource(DNLImageSource *dnl);
     void start();
@@ -18,11 +20,15 @@ public:
     void onAppSrcNeedData(GstAppSrc *appsrc, guint size);
     void onImage(DNLImage::Pointer image);
 
+    GMainLoop* loop;
+
 private:
     GstElement *pipeline, *appsrc, *pngdec, *conv, *payloader, *udpsink, *videoenc;
     DNLFrameExchange* exchange;
     DNLImageSource* dnl_image_source;
+    int fps = 20;
 
+    int getFPS();
     void createGstPipeline();
 };
 

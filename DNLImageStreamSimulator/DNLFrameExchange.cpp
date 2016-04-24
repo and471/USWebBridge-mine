@@ -12,7 +12,6 @@ DNLImage::Pointer DNLFrameExchange::get_frame() {
     // Block until we have at least one frame
     while (current_frame == nullptr) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
-
     }
 
     return current_frame;

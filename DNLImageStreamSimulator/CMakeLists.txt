@@ -4,52 +4,34 @@ cmake_policy(SET CMP0002 OLD)
 
 # Find includes in corresponding build directories
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
-
-
-include(${CMAKE_SOURCE_DIR}/cmake/Modules/FindGStreamer.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/Modules/FindGObject.cmake)
-
-include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
-INCLUDE_DIRECTORIES("${CMAKE_CURRENT_SOURCE_DIR}")
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
+include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_SOURCE_DIR})
 
 # Retrieve boost
 find_path(Boost_ROOT_DIR DUMMY)
 SET(CMAKE_INCLUDE_PATH ${CMAKE_INCLUDE_PATH} "${Boost_ROOT_DIR}/")
 SET(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} "${Boost_ROOT_DIR}/libs")
-find_package(Boost COMPONENTS system filesystem thread date_time) # system chrono
-IF (Boost_FOUND)
-    INCLUDE_DIRECTORIES("${Boost_INCLUDE_DIRS}")
-    LINK_DIRECTORIES("${Boost_LIBRARY_DIRS}")
-    ADD_DEFINITIONS( "-DHAS_BOOST" )
-else()
-        message("Boost not found")
-ENDIF()
-
+find_package(Boost COMPONENTS system filesystem thread date_time REQUIRED) # system chrono
 INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS})
-LINK_DIRECTORIES(${Boost_LIBRARY_DIRS})
+set(LIBS ${LIBS} ${Boost_LIBRARIES})
 
-# Find ITK and VTK 
+# Find ITK and VTK
 find_package(ITK REQUIRED)
+set(LIBS ${LIBS} ${ITK_LIBRARIES})
 find_package(VTK REQUIRED)
-
+set(LIBS ${LIBS} ${VTK_LIBRARIES})
 INCLUDE(${VTK_USE_FILE})
 INCLUDE(${ITK_USE_FILE})
 
 # Find GObject
-INCLUDE_DIRECTORIES("${GOBJECT_INCLUDE_DIR}")
-LINK_DIRECTORIES("${GOBJECT_LIBRARIES}")
+find_package(GObject REQUIRED)
+INCLUDE_DIRECTORIES(${GOBJECT_INCLUDE_DIR})
+set(LIBS ${LIBS} ${GOBJECT_LIBRARIES})
 
 # Find Gstreamer
-IF (GSTREAMER_FOUND)
-    INCLUDE_DIRECTORIES("${GSTREAMER_INCLUDE_DIRS}")
-    LINK_DIRECTORIES("${GSTREAMER_LIBRARIES}")
-    INCLUDE_DIRECTORIES("${GSTREAMER_APP_INCLUDE_DIRS}")
-    LINK_DIRECTORIES("${GSTREAMER_APP_LIBRARIES}")
-else()
-    message("GStreamer not found")
-ENDIF()
-
-
+find_package(GStreamer COMPONENTS gstreamer-app REQUIRED)
+INCLUDE_DIRECTORIES(${GSTREAMER_INCLUDE_DIRS} ${GSTREAMER_APP_INCLUDE_DIRS})
+set(LIBS ${LIBS} ${GSTREAMER_LIBRARIES} ${GSTREAMER_APP_LIBRARIES})
 
 set (SRCS
  DNLImageSource.cpp
@@ -60,14 +42,12 @@ set (SRCS
 )
 
 add_executable(DNLImageStreamSimulator
-                main_DNLImageSteamSimulator.cpp
+                main_DNLImageStreamSimulator.cpp
                 ${SRCS}
                 )
 
 TARGET_LINK_LIBRARIES(DNLImageStreamSimulator
-         ${Boost_LIBRARIES}
          pthread
          USStreamingCommon
-         ${VTK_LIBRARIES} ${ITK_LIBRARIES} ${GSTREAMER_LIBRARIES} ${GSTREAMER_APP_LIBRARIES}
-         ${GOBJECT_LIBRARIES}
+         ${LIBS}
          )
