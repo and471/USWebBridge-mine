@@ -129,7 +129,7 @@ url = RTSP stream URL (only if type=rtsp)
 #include <janus/rtcp.h>
 #include <janus/record.h>
 #include <janus/utils.h>
-#include <janus/plugin/plugin.h>
+#include <janus/plugin.h>
 
 
 /* Plugin information */
@@ -2458,7 +2458,7 @@ static void *janus_ultrasound_handler(void *data) {
 			JANUS_LOG(LOG_VERB, "Going to offer this SDP:\n%s\n", sdp);
 
 			// TEMP
-			printf("%s", sdp);
+            printf("HELLLLLLLLLLLLLO        %s", sdp);
 
 			result = json_object();
 			json_object_set_new(result, "status", json_string("preparing"));
