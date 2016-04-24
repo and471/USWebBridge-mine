@@ -23,7 +23,7 @@ void DNLFileImageSource::start() {
 void DNLFileImageSource::GenerateImagesThread() {
     // Generate images from each file, and when all are exhausted, start again
     std::vector<PathType>::const_iterator filename;
-    //while(true) {
+    while(true) {
         for (filename = this->filenames.begin(); filename != this->filenames.end(); filename++){
 
             if (this->stop_image_generation){
@@ -47,7 +47,7 @@ void DNLFileImageSource::GenerateImagesThread() {
 
             std::this_thread::sleep_for(std::chrono::milliseconds((int) At));
         }
-    //}
+    }
 }
 
 void DNLFileImageSource::stop() {

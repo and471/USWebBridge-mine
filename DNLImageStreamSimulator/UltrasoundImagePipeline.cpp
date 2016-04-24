@@ -96,7 +96,6 @@ void UltrasoundImagePipeline::onAppSrcNeedData(GstAppSrc* appsrc, guint size) {
     if (ret != GST_FLOW_OK) {
         fprintf(stderr, "Gstreamer Error\n");
     }
-    //gst_buffer_unref(buffer);
 }
 
 void UltrasoundImagePipeline::onImage(DNLImage::Pointer image) {
