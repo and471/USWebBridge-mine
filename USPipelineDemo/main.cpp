@@ -1,24 +1,18 @@
-#include <gst/gst.h>
-#include <gst/app/gstappsrc.h>
 #include <cstdio>
-#include <iostream>
+#include <gst/gst.h>
 #include <string>
 #include <glib.h>
 
 #include <USPipeline/DNLImageSource.h>
 #include <USPipeline/DNLFileImageSource.h>
-#include <USPipeline/DNLFrameExchange.h>
-#include <USPipeline/DNLImageExtractor.h>
 #include <USPipeline/UltrasoundImagePipeline.h>
-#include <Modules/USStreamingCommon/DNLImage.h>
-
 
 int main(int argc, char *argv[]) {
 
     if (argc < 2) {
-        std::cout << "Not enough arguments"<<std::endl;
-        std::cout << "Usage:"<<std::endl;
-        std::cout << argv[0]<<" "<< "<folder>"<<std::endl;
+        printf("Not enough arguments\n");
+        printf("Usage:\n");
+        printf("%s <folder>\n", argv[0]);
         return -1;
     }
 
@@ -28,7 +22,7 @@ int main(int argc, char *argv[]) {
     GMainLoop* loop = g_main_loop_new(NULL, FALSE);
 
     DNLImageSource* dnl_image_source = new DNLFileImageSource(folder);
-    UltrasoundImagePipeline *pipeline = new UltrasoundImagePipeline(loop);
+    UltrasoundImagePipeline *pipeline = new UltrasoundImagePipeline();
     pipeline->setDNLImageSource(dnl_image_source);
 
     pipeline->start();

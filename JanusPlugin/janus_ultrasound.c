@@ -126,6 +126,9 @@ url = RTSP stream URL (only if type=rtsp)
 #include <janus/plugin.h>
 
 
+#include <USPipelineInterface/interface.h>
+
+
 /* Plugin information */
 #define JANUS_ULTRASOUND_VERSION			5
 #define JANUS_ULTRASOUND_VERSION_STRING	"0.0.5"
@@ -159,13 +162,13 @@ char *janus_ultrasound_query_session(janus_plugin_session *handle);
 
 /* Plugin setup */
 static janus_plugin janus_ultrasound_plugin =
-	JANUS_PLUGIN_INIT (
+    JANUS_PLUGIN_INIT (
 		.init = janus_ultrasound_init,
 		.destroy = janus_ultrasound_destroy,
 
 		.get_api_compatibility = janus_ultrasound_get_api_compatibility,
 		.get_version = janus_ultrasound_get_version,
-		.get_version_string = janus_ultrasound_get_version_string,
+        .get_version_string = janus_ultrasound_get_version_string,
 		.get_description = janus_ultrasound_get_description,
 		.get_name = janus_ultrasound_get_name,
 		.get_author = janus_ultrasound_get_author,
@@ -182,7 +185,7 @@ static janus_plugin janus_ultrasound_plugin =
 		.hangup_media = janus_ultrasound_hangup_media,
 		.destroy_session = janus_ultrasound_destroy_session,
 		.query_session = janus_ultrasound_query_session,
-	);
+    );
 
 /* Plugin creator */
 janus_plugin *create(void) {
@@ -427,7 +430,6 @@ void *janus_ultrasound_watchdog(void *data) {
 	return NULL;
 }
 
-
 /* Plugin implementation */
 int janus_ultrasound_init(janus_callbacks *callback, const char *config_path) {
 	if(g_atomic_int_get(&stopping)) {
@@ -438,6 +440,8 @@ int janus_ultrasound_init(janus_callbacks *callback, const char *config_path) {
 		/* Invalid arguments */
 		return -1;
 	}
+
+    yo();
 
 	/* Read configuration */
 	char filename[255];

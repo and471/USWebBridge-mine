@@ -1,0 +1,7 @@
+#ifndef USPIPELINEINTERFACE_H
+#define USPIPELINEINTERFACE_H
+
+void yo();
+
+
+#endif // USPIPELINEINTERFACE_H

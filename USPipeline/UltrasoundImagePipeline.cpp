@@ -21,8 +21,8 @@ void onImageWrapper(DNLImage::Pointer image, void* data) {
 }
 
 
-UltrasoundImagePipeline::UltrasoundImagePipeline(GMainLoop* loop) {
-    this->loop = loop;
+UltrasoundImagePipeline::UltrasoundImagePipeline() {
+    loop = g_main_loop_new(NULL, FALSE);
     exchange = new DNLFrameExchange();
     createGstPipeline();
 }
@@ -30,6 +30,7 @@ UltrasoundImagePipeline::UltrasoundImagePipeline(GMainLoop* loop) {
 UltrasoundImagePipeline::~UltrasoundImagePipeline() {
     delete exchange;
     gst_object_unref(pipeline); // frees pipeline and all elements
+    g_main_loop_unref(loop);
 }
 
 void UltrasoundImagePipeline::createGstPipeline() {
@@ -70,11 +71,25 @@ void UltrasoundImagePipeline::setDNLImageSource(DNLImageSource* dnl) {
 }
 
 void UltrasoundImagePipeline::start() {
+    if (thread != nullptr) {
+        fprintf(stderr, "Cannot start new thread: thread is already running\n");
+    }
     dnl_image_source->start();
     gst_element_set_state(pipeline, GST_STATE_PLAYING);
+
+    thread = new std::thread(startThread, loop);
+}
+
+void UltrasoundImagePipeline::startThread(GMainLoop* loop) {
+    g_main_loop_run(loop);
 }
 
 void UltrasoundImagePipeline::stop() {
+    g_main_loop_quit(loop);
+
+    thread->join();
+    thread = nullptr;
+
     gst_element_set_state(pipeline, GST_STATE_NULL);
     dnl_image_source->stop();
 }

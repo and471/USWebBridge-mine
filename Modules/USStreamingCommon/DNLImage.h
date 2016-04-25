@@ -8,12 +8,16 @@
 #include <vtkImageData.h>
 #include <vtkMatrix4x4.h>
 #include <boost/integer.hpp>
-
+#include <vector>
+#include <sstream>
 
 //#include <Modules/DataStreaming/DataStreamClient.h>
 
-#include <itkImage.h>
-#include <itkMatrix.h>
+#ifdef ITK_SUPPORT
+    #include <itkImage.h>
+    #include <itkMatrix.h>
+#endif
+
 #include <memory>
 #include <list>
 
@@ -28,10 +32,17 @@ public:
     typedef std::list<DNLImage::Pointer> DNLImageBufferType;
 
     enum class ImageMode { TwoD, ThreeDCartesian, ThreeDFrustum };
-    enum class ImageFormat {  ITK, VTK};
+    enum class ImageFormat {
+    #ifdef ITK_SUPPORT
+        ITK,
+    #endif
+        VTK
+    };
     typedef uint8_t Byte;
 
+    #ifdef ITK_SUPPORT
     typedef itk::Image<Byte, 3> itkImageType3;
+    #endif
     
     bool m_debug;
 
@@ -50,9 +61,12 @@ public:
 
     ImageMode GetImageMode(){ return this->m_imageMode; }
     vtkSmartPointer<vtkImageData> GetVTKImage(int layer = 0);
+
+    #ifdef ITK_SUPPORT
     itkImageType3::Pointer GetITKImage(int layer=0);
     static itkImageType3::Pointer VTKToITK(vtkSmartPointer<vtkImageData> vtkImage);
     static vtkSmartPointer<vtkImageData> ITKToVTK(itkImageType3::Pointer itkImage);
+    #endif
 
     std::string GetDNLTimeStamp();
     std::string GetLocalTimeStamp();

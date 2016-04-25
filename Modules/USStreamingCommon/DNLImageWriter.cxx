@@ -1,7 +1,6 @@
 #include "DNLImageWriter.h"
 
 #include <vtkMetaImageWriter.h>
-#include <itkImageFileWriter.h>
 
 #include <boost/filesystem.hpp>
 

@@ -10,7 +10,7 @@
 class UltrasoundImagePipeline
 {
 public:
-    UltrasoundImagePipeline(GMainLoop* loop);
+    UltrasoundImagePipeline();
     ~UltrasoundImagePipeline();
 
     void setDNLImageSource(DNLImageSource *dnl);
@@ -20,14 +20,15 @@ public:
     void onAppSrcNeedData(GstAppSrc *appsrc, guint size);
     void onImage(DNLImage::Pointer image);
 
-    GMainLoop* loop;
-
 private:
+    std::thread* thread = nullptr;
+    GMainLoop* loop;
     GstElement *pipeline, *appsrc, *pngdec, *conv, *payloader, *udpsink, *videoenc;
     DNLFrameExchange* exchange;
     DNLImageSource* dnl_image_source;
     int fps = 20;
 
+    static void startThread(GMainLoop* loop);
     int getFPS();
     void createGstPipeline();
 };

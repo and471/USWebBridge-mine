@@ -12,10 +12,13 @@
 #endif
 
 #include <memory> 
-
 #include <vtkImageFlip.h>
+
+#ifdef ITK_SUPPORT
 #include <itkVTKImageToImageFilter.h>
 #include <itkImageToVTKImageFilter.h>
+#endif
+
 #include <vtkInformation.h>
 
 /// For tests only
@@ -523,6 +526,7 @@ vtkSmartPointer<vtkImageData> DNLImage::GetVTKImage(int layer){
     return nullptr;
 }
 
+#ifdef ITK_SUPPORT
 /**
  * @brief DNLImage::GetITKImage
  * Convert the VTKImage to ITK and apply orientation
@@ -581,6 +585,7 @@ vtkSmartPointer<vtkImageData> DNLImage::ITKToVTK(DNLImage::itkImageType3::Pointe
     vtkSmartPointer<vtkImageData> vtkImage = convertor->GetOutput();
     return vtkImage;
 }
+#endif
 
 void DNLImage::UpdateLocalTimestamp(){
     std::stringstream ss;

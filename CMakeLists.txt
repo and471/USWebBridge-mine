@@ -50,6 +50,8 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 add_subdirectory(Modules)
 
+add_subdirectory(USPipeline)
+add_subdirectory(USPipelineInterface)
 
 option (BUILD_SIMULATOR   "Build USPipeline demo" ON)
 if (BUILD_SIMULATOR)
@@ -61,7 +63,6 @@ if (BUILD_JANUS_PLUGIN)
     add_subdirectory(JanusPlugin)
 endif()
 
-add_subdirectory(USPipeline)
 
 #-----------------------------------------------------------------------------
 option(BUILD_DOXYGENDOC "Build Doxygen documentation" OFF)
