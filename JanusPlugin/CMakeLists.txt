@@ -24,6 +24,7 @@ set(LIBS ${LIBS} ${GLIB_LIBRARIES})
 
 set (SRCS
     janus_ultrasound.cpp
+    UltrasoundPlugin.cpp
 )
 
 ADD_LIBRARY(janus_ultrasound SHARED

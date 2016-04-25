@@ -126,7 +126,7 @@ extern "C" {
 }
 
 #include <USPipelineInterface/interface.h>
-
+#include "UltrasoundPlugin.h"
 
 /* Plugin information */
 #define JANUS_ULTRASOUND_VERSION			5
@@ -452,6 +452,9 @@ int janus_ultrasound_init(janus_callbacks *callback, const char *config_path) {
 
     USPipelineInterface* pipeline_interface = new USPipelineInterface();
     pipeline_interface->connect(SIGNAL_PIPELINE_MESSAGE, &on_pipeline_message);
+
+    UltrasoundPlugin* us_plugin = new UltrasoundPlugin(pipeline_interface);
+
 
 	/* Read configuration */
 	char filename[255];
