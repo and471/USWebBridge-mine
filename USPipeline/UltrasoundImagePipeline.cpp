@@ -21,7 +21,8 @@ void onImageWrapper(DNLImage::Pointer image, void* data) {
 }
 
 
-UltrasoundImagePipeline::UltrasoundImagePipeline() {
+UltrasoundImagePipeline::UltrasoundImagePipeline(USPipelineInterface* interface) {
+    this->interface = interface;
     loop = g_main_loop_new(NULL, FALSE);
     exchange = new DNLFrameExchange();
     createGstPipeline();
@@ -100,6 +101,8 @@ void UltrasoundImagePipeline::onAppSrcNeedData(GstAppSrc* appsrc, guint size) {
     char* d;
     size_t s;
     DNLImageExtractor::get_png(exchange->get_frame(), &d, &s);
+
+    interface->fire(SIGNAL_PIPELINE_MESSAGE, (void*)exchange->get_frame()->patientName().c_str());
 
     GstBuffer* buffer = gst_buffer_new_wrapped(d, s);
 

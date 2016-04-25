@@ -108,13 +108,12 @@ url = RTSP stream URL (only if type=rtsp)
  * \ref plugins
  */
 
-
-
 #include <jansson.h>
 #include <errno.h>
 #include <sys/poll.h>
 #include <sys/time.h>
 
+extern "C" {
 #include <janus/debug.h>
 #include <janus/apierror.h>
 #include <janus/config.h>
@@ -124,7 +123,7 @@ url = RTSP stream URL (only if type=rtsp)
 #include <janus/record.h>
 #include <janus/utils.h>
 #include <janus/plugin.h>
-
+}
 
 #include <USPipelineInterface/interface.h>
 
@@ -138,7 +137,7 @@ url = RTSP stream URL (only if type=rtsp)
 #define JANUS_ULTRASOUND_PACKAGE			"plugin.ultrasound"
 
 
-
+extern "C" {
 /* Plugin methods */
 janus_plugin *create(void);
 int janus_ultrasound_init(janus_callbacks *callback, const char *config_path);
@@ -160,32 +159,35 @@ void janus_ultrasound_hangup_media(janus_plugin_session *handle);
 void janus_ultrasound_destroy_session(janus_plugin_session *handle, int *error);
 char *janus_ultrasound_query_session(janus_plugin_session *handle);
 
+void send_data_channel_message(char* message);
+}
+
 /* Plugin setup */
 static janus_plugin janus_ultrasound_plugin =
-    JANUS_PLUGIN_INIT (
-		.init = janus_ultrasound_init,
-		.destroy = janus_ultrasound_destroy,
+{
+		/*.init =*/ janus_ultrasound_init,
+		/*.destroy =*/ janus_ultrasound_destroy,
 
-		.get_api_compatibility = janus_ultrasound_get_api_compatibility,
-		.get_version = janus_ultrasound_get_version,
-        .get_version_string = janus_ultrasound_get_version_string,
-		.get_description = janus_ultrasound_get_description,
-		.get_name = janus_ultrasound_get_name,
-		.get_author = janus_ultrasound_get_author,
-		.get_package = janus_ultrasound_get_package,
+		/*.get_api_compatibility =*/ janus_ultrasound_get_api_compatibility,
+		/*.get_version =*/ janus_ultrasound_get_version,
+        /*.get_version_string =*/ janus_ultrasound_get_version_string,
+		/*.get_description =*/ janus_ultrasound_get_description,
+		/*.get_name =*/ janus_ultrasound_get_name,
+		/*.get_author =*/ janus_ultrasound_get_author,
+		/*.get_package =*/ janus_ultrasound_get_package,
 		
-		.create_session = janus_ultrasound_create_session,
-		.handle_message = janus_ultrasound_handle_message,
-		.setup_media = janus_ultrasound_setup_media,
-		.incoming_rtp = janus_ultrasound_incoming_rtp,
-		.incoming_rtcp = janus_ultrasound_incoming_rtcp,
+		/*.create_session =*/ janus_ultrasound_create_session,
+		/*.handle_message =*/ janus_ultrasound_handle_message,
+		/*.setup_media =*/ janus_ultrasound_setup_media,
+		/*.incoming_rtp =*/ janus_ultrasound_incoming_rtp,
+		/*.incoming_rtcp =*/ janus_ultrasound_incoming_rtcp,
 
-		.incoming_data = janus_ultrasound_incoming_data,
-
-		.hangup_media = janus_ultrasound_hangup_media,
-		.destroy_session = janus_ultrasound_destroy_session,
-		.query_session = janus_ultrasound_query_session,
-    );
+		/*.incoming_data =*/ janus_ultrasound_incoming_data,
+		/*.slow_link =*/ NULL,
+		/*.hangup_media =*/ janus_ultrasound_hangup_media,
+		/*.destroy_session =*/ janus_ultrasound_destroy_session,
+		/*.query_session =*/ janus_ultrasound_query_session,
+};
 
 /* Plugin creator */
 janus_plugin *create(void) {
@@ -430,6 +432,13 @@ void *janus_ultrasound_watchdog(void *data) {
 	return NULL;
 }
 
+void on_pipeline_message(void* msg);
+void on_pipeline_message(void* msg) {
+    printf("Message from the pipeline: %s\n", (char*)msg);
+
+    send_data_channel_message((char*)msg);
+}
+
 /* Plugin implementation */
 int janus_ultrasound_init(janus_callbacks *callback, const char *config_path) {
 	if(g_atomic_int_get(&stopping)) {
@@ -441,7 +450,8 @@ int janus_ultrasound_init(janus_callbacks *callback, const char *config_path) {
 		return -1;
 	}
 
-    yo();
+    USPipelineInterface* pipeline_interface = new USPipelineInterface();
+    pipeline_interface->connect(SIGNAL_PIPELINE_MESSAGE, &on_pipeline_message);
 
 	/* Read configuration */
 	char filename[255];
@@ -684,6 +694,8 @@ const char *janus_ultrasound_get_package(void) {
 	return JANUS_ULTRASOUND_PACKAGE;
 }
 
+static janus_plugin_session *global_handle;
+
 void janus_ultrasound_create_session(janus_plugin_session *handle, int *error) {
 	if(g_atomic_int_get(&stopping) || !g_atomic_int_get(&initialized)) {
 		*error = -1;
@@ -705,6 +717,8 @@ void janus_ultrasound_create_session(janus_plugin_session *handle, int *error) {
 	janus_mutex_lock(&sessions_mutex);
 	g_hash_table_insert(sessions, handle, session);
 	janus_mutex_unlock(&sessions_mutex);
+
+    global_handle = handle;
 
 	return;
 }
@@ -2881,3 +2895,8 @@ void janus_ultrasound_incoming_data(janus_plugin_session *handle, char *buf, int
 		g_free(reply);
 	}
 }
+
+void send_data_channel_message(char* message) {
+    gateway->relay_data(global_handle, message, strlen(message));
+}
+

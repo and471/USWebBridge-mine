@@ -145,6 +145,8 @@ public:
     std::vector<float> echoGain() const;
     void setEchoGain(const std::vector<float> &echoGain);
 
+    std::string m_patientName;
+
 private:
 
     std::vector< vtkSmartPointer<vtkImageData> > m_vtkImageLayers;
@@ -156,7 +158,7 @@ private:
     std::string m_trackerTimestamp;
     std::string m_forceTimestamp;
     std::string m_transducerTimestamp;
-    std::string m_patientName;
+
 
     int m_ndimensions;
     int m_transducerNumber;

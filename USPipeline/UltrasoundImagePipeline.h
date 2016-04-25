@@ -3,14 +3,16 @@
 
 #include <gst/gst.h>
 #include <gst/app/gstappsrc.h>
+#include <glib.h>
+
 #include "DNLImageSource.h"
 #include "DNLFrameExchange.h"
-#include <glib.h>
+#include <USPipelineInterface/interface.h>
 
 class UltrasoundImagePipeline
 {
 public:
-    UltrasoundImagePipeline();
+    UltrasoundImagePipeline(USPipelineInterface* interface);
     ~UltrasoundImagePipeline();
 
     void setDNLImageSource(DNLImageSource *dnl);
@@ -21,7 +23,8 @@ public:
     void onImage(DNLImage::Pointer image);
 
 private:
-    std::thread* thread = nullptr;
+    USPipelineInterface* interface;
+    std::thread* thread;
     GMainLoop* loop;
     GstElement *pipeline, *appsrc, *pngdec, *conv, *payloader, *udpsink, *videoenc;
     DNLFrameExchange* exchange;

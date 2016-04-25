@@ -2,7 +2,7 @@ INCLUDE_DIRECTORIES("${CMAKE_CURRENT_SOURCE_DIR}")
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -fpermissive")
 
 # Find Jansson
 find_package(Jansson REQUIRED)
@@ -23,7 +23,7 @@ INCLUDE_DIRECTORIES(${GLIB_INCLUDE_DIRS})
 set(LIBS ${LIBS} ${GLIB_LIBRARIES})
 
 set (SRCS
-    janus_ultrasound.c
+    janus_ultrasound.cpp
 )
 
 ADD_LIBRARY(janus_ultrasound SHARED

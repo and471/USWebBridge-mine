@@ -22,7 +22,7 @@ int main(int argc, char *argv[]) {
     GMainLoop* loop = g_main_loop_new(NULL, FALSE);
 
     DNLImageSource* dnl_image_source = new DNLFileImageSource(folder);
-    UltrasoundImagePipeline *pipeline = new UltrasoundImagePipeline();
+    UltrasoundImagePipeline *pipeline = new UltrasoundImagePipeline(NULL);
     pipeline->setDNLImageSource(dnl_image_source);
 
     pipeline->start();

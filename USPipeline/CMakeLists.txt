@@ -46,5 +46,6 @@ add_library(USPipeline ${SRCS})
 TARGET_LINK_LIBRARIES(USPipeline
          pthread
          USStreamingCommon
+         USPipelineInterface
          ${LIBS}
 )

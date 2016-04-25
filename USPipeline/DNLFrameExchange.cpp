@@ -5,6 +5,9 @@
 void DNLFrameExchange::add_frame(DNLImage::Pointer frame) {
     mutex.lock();
     current_frame = frame;
+
+    // TODO: remove
+    frame->m_patientName = "Patient Name is Frank";
     mutex.unlock();
 }
 
