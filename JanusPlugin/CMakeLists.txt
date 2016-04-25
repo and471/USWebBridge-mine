@@ -9,7 +9,7 @@ set(LIBS ${LIBS} ${JANSSON_LIBRARIES})
 
 # Find Janus header files
 if(JANUS_INCLUDE_DIR)
-    message("${JANUS_INCLUDE_DIR}")
+    message("Janus include dir:" ${JANUS_INCLUDE_DIR})
     INCLUDE_DIRECTORIES(${JANUS_INCLUDE_DIR})
 else()
     message(SEND_ERROR "JANUS_INCLUDE_DIR was not defined")

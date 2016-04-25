@@ -51,9 +51,9 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 add_subdirectory(Modules)
 
 
-option (BUILD_SIMULATOR   "Build DNL Image stream simulator app" ON)
+option (BUILD_SIMULATOR   "Build USPipeline demo" ON)
 if (BUILD_SIMULATOR)
-	add_subdirectory(DNLImageStreamSimulator)
+    add_subdirectory(USPipelineDemo)
 endif() 
 
 option (BUILD_JANUS_PLUGIN   "Build Janus Plugin" ON)
@@ -61,6 +61,7 @@ if (BUILD_JANUS_PLUGIN)
     add_subdirectory(JanusPlugin)
 endif()
 
+add_subdirectory(USPipeline)
 
 #-----------------------------------------------------------------------------
 option(BUILD_DOXYGENDOC "Build Doxygen documentation" OFF)

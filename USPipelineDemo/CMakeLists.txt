@@ -33,21 +33,13 @@ find_package(GStreamer COMPONENTS gstreamer-app REQUIRED)
 INCLUDE_DIRECTORIES(${GSTREAMER_INCLUDE_DIRS} ${GSTREAMER_APP_INCLUDE_DIRS})
 set(LIBS ${LIBS} ${GSTREAMER_LIBRARIES} ${GSTREAMER_APP_LIBRARIES})
 
-set (SRCS
- DNLImageSource.cpp
- DNLFileImageSource.cpp
- DNLFrameExchange.cpp
- DNLImageExtractor.cpp
- UltrasoundImagePipeline.cpp
+add_executable(USPipelineDemo
+    main.cpp
 )
 
-add_executable(DNLImageStreamSimulator
-                main_DNLImageStreamSimulator.cpp
-                ${SRCS}
-                )
-
-TARGET_LINK_LIBRARIES(DNLImageStreamSimulator
-         pthread
-         USStreamingCommon
-         ${LIBS}
-         )
+TARGET_LINK_LIBRARIES(USPipelineDemo
+    pthread
+    USStreamingCommon
+    USPipeline
+    ${LIBS}
+)

@@ -5,11 +5,11 @@
 #include <string>
 #include <glib.h>
 
-#include "DNLImageSource.h"
-#include "DNLFileImageSource.h"
-#include "DNLFrameExchange.h"
-#include "DNLImageExtractor.h"
-#include "UltrasoundImagePipeline.h"
+#include <USPipeline/DNLImageSource.h>
+#include <USPipeline/DNLFileImageSource.h>
+#include <USPipeline/DNLFrameExchange.h>
+#include <USPipeline/DNLImageExtractor.h>
+#include <USPipeline/UltrasoundImagePipeline.h>
 #include <Modules/USStreamingCommon/DNLImage.h>
 
 
@@ -30,7 +30,6 @@ int main(int argc, char *argv[]) {
     DNLImageSource* dnl_image_source = new DNLFileImageSource(folder);
     UltrasoundImagePipeline *pipeline = new UltrasoundImagePipeline(loop);
     pipeline->setDNLImageSource(dnl_image_source);
-
 
     pipeline->start();
     g_main_loop_run(loop);
