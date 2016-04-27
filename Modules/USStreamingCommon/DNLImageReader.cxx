@@ -49,12 +49,12 @@ void DNLImageReader::Read(){
     std::vector<int> acqfr(nlayers);
     std::vector<int> txfr(nlayers);
 
-
+    ImageHeader header;
     /// Iterate over layers ------------------------
     for (int i=0; i<nlayers; i++){
 
         /// Read image data ///
-        vtkImageLayers[i] = ReadFromFile(layer_filenames[i]);
+        vtkImageLayers[i] = ReadFromFile(layer_filenames[i], &header);
 
         /// Read meta data ///
 
@@ -139,6 +139,7 @@ void DNLImageReader::Read(){
                                                    dnlTimestamp, dnlLayerTimeTagInt, localTimeStampInt, trackerTimeStampInt, forceTimeStampInt, transducerTimeStampInt,
                                                    acqfr, txfr)
                                       );
+    this->m_image->setNdimensions(header.NDims);
 
 }
 
@@ -148,10 +149,7 @@ DNLImage::Pointer DNLImageReader::GetDNLImage(){
 }
 
 
-vtkSmartPointer<vtkImageData> DNLImageReader::ReadFromFile(std::string &filename){
-
-
-    ImageHeader header;
+vtkSmartPointer<vtkImageData> DNLImageReader::ReadFromFile(std::string &filename, ImageHeader* header){
 
     fstream myfile;
     myfile.open(filename, fstream::in);
@@ -162,64 +160,64 @@ vtkSmartPointer<vtkImageData> DNLImageReader::ReadFromFile(std::string &filename
         while (!myfile.eof()) {
             myfile >> field;
             if (!strcmp(field.data(), "ObjectType")){
-                myfile >> field>>header.ObjectType;
+                myfile >> field>>header->ObjectType;
             } else if (!strcmp(field.data(), "NDims")){
-                myfile >> field>>header.NDims;
+                myfile >> field>>header->NDims;
             } else if (!strcmp(field.data(), "BinaryData")){
                 std::string boolFlag;
                 myfile >> field>>boolFlag;
-                header.BinaryData = false;
+                header->BinaryData = false;
                 if (!strcmp(boolFlag.data(), "True")){
-                    header.BinaryData = true;
+                    header->BinaryData = true;
                 }
             } else if (!strcmp(field.data(), "BinaryDataByteOrderMSB")){
                 std::string boolFlag;
                 myfile >> field>>boolFlag;
-                header.BinaryDataByteOrderMSB = false;
+                header->BinaryDataByteOrderMSB = false;
                 if (!strcmp(boolFlag.data(), "True")){
-                    header.BinaryDataByteOrderMSB = true;
+                    header->BinaryDataByteOrderMSB = true;
                 }
             } else if (!strcmp(field.data(), "CompressedData")){
                 std::string boolFlag;
                 myfile >> field>>boolFlag;
-                header.CompressedData = false;
+                header->CompressedData = false;
                 if (!strcmp(boolFlag.data(), "True")){
-                    header.CompressedData = true;
+                    header->CompressedData = true;
                 }
             } else if (!strcmp(field.data(), "TransformMatrix")){
                 myfile >> field;
-                for (int i=0; i<header.NDims*header.NDims; i++){
-                    myfile >>header.TransformMatrix[i];
+                for (int i=0; i<header->NDims*header->NDims; i++){
+                    myfile >>header->TransformMatrix[i];
                 }
             } else if (!strcmp(field.data(), "Offset")){
                 myfile >> field;
-                for (int i=0; i<header.NDims; i++){
-                    myfile >>header.Offset[i];
+                for (int i=0; i<header->NDims; i++){
+                    myfile >>header->Offset[i];
                 }
             } else if (!strcmp(field.data(), "CenterOfRotation")){
                 myfile >> field;
-                for (int i=0; i<header.NDims; i++){
-                    myfile >>header.CenterOfRotation[i];
+                for (int i=0; i<header->NDims; i++){
+                    myfile >>header->CenterOfRotation[i];
                 }
             } else if (!strcmp(field.data(), "ElementSpacing")){
                 myfile >> field;
-                for (int i=0; i<header.NDims; i++){
-                    myfile >>header.ElementSpacing[i];
+                for (int i=0; i<header->NDims; i++){
+                    myfile >>header->ElementSpacing[i];
                 }
             } else if (!strcmp(field.data(), "DimSize")){
                 myfile >> field;
-                for (int i=0; i<header.NDims; i++){
-                    myfile >>header.DimSize[i];
+                for (int i=0; i<header->NDims; i++){
+                    myfile >>header->DimSize[i];
                 }
             } else if (!strcmp(field.data(), "AnatomicalOrientation")){
                 myfile >> field;
-                myfile >>header.AnatomicalOrientation;
+                myfile >>header->AnatomicalOrientation;
             } else if (!strcmp(field.data(), "ElementType")){
                 myfile >> field;
-                myfile >>header.ElementType;
+                myfile >>header->ElementType;
             } else if (!strcmp(field.data(), "ElementDataFile")){
                 myfile >> field;
-                myfile >>header.ElementDataFile;
+                myfile >>header->ElementDataFile;
             }
         }
     }
@@ -229,21 +227,21 @@ vtkSmartPointer<vtkImageData> DNLImageReader::ReadFromFile(std::string &filename
     vtkSmartPointer<vtkImageData> image;
 
     /// Read raw data
-    if (!header.CompressedData){
+    if (!header->CompressedData){
 
         int length = 1;
-        for (int i=0; i< header.NDims; i++){
-            length *= header.DimSize[i];
+        for (int i=0; i< header->NDims; i++){
+            length *= header->DimSize[i];
         }
 
         int idx = filename.find_last_of('/');
         std::string path = filename.substr(0,idx);
 
         int NBYTES;
-        if (!strcmp(header.ElementType.data(),"MET_UCHAR")){
+        if (!strcmp(header->ElementType.data(),"MET_UCHAR")){
             NBYTES = length*sizeof(char);
             char * buffer = new char[NBYTES];
-            std::ifstream is(path + std::string("/") +header.ElementDataFile, ios::binary );
+            std::ifstream is(path + std::string("/") +header->ElementDataFile, ios::binary );
             if (is) {
                 // read data as a block:
                 is.read (buffer, length);
@@ -252,9 +250,9 @@ vtkSmartPointer<vtkImageData> DNLImageReader::ReadFromFile(std::string &filename
 
             /// create vtkImage
             vtkSmartPointer<vtkImageImport> importer = vtkSmartPointer<vtkImageImport>::New();
-            importer->SetDataSpacing(header.ElementSpacing);
-            importer->SetDataOrigin(header.Offset);
-            importer->SetWholeExtent(0, header.DimSize[0] - 1, 0, header.DimSize[1] - 1, 0, header.DimSize[2] - 1);
+            importer->SetDataSpacing(header->ElementSpacing);
+            importer->SetDataOrigin(header->Offset);
+            importer->SetWholeExtent(0, header->DimSize[0] - 1, 0, header->DimSize[1] - 1, 0, header->DimSize[2] - 1);
             importer->SetDataExtentToWholeExtent();
             importer->SetDataScalarTypeToUnsignedChar();
             importer->SetNumberOfScalarComponents(1);

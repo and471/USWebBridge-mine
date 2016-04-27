@@ -6,6 +6,7 @@
 #include <glib.h>
 
 #include "DNLImageSource.h"
+#include "DNLImageExtractor.h"
 #include "DNLFrameExchange.h"
 #include <USPipelineInterface/interface.h>
 
@@ -23,6 +24,7 @@ public:
     void onImage(DNLImage::Pointer image);
 
 private:
+    DNLImageExtractor* extractor;
     USPipelineInterface* interface;
     std::thread* thread;
     GMainLoop* loop;

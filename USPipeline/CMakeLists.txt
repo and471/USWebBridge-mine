@@ -38,6 +38,7 @@ set (SRCS
  DNLFileImageSource.cpp
  DNLFrameExchange.cpp
  DNLImageExtractor.cpp
+ DNL2DImageExtractor.cpp
  UltrasoundImagePipeline.cpp
 )
 

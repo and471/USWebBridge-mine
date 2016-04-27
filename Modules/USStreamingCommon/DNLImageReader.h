@@ -52,7 +52,7 @@ private:
         std::string m_filename;
         DNLImage::Pointer m_image;
 
-        static vtkSmartPointer<vtkImageData> ReadFromFile(std::string &filename);
+        static vtkSmartPointer<vtkImageData> ReadFromFile(std::string &filename, ImageHeader* header);
 
 };
 

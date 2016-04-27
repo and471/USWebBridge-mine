@@ -3,10 +3,14 @@
 #include <vtkUnsignedCharArray.h>
 #include <cstdio>
 
+DNLImageExtractor::DNLImageExtractor() {
+    this->layer = 0;
+}
+
 void DNLImageExtractor::get_png(DNLImage::Pointer image, char** data, size_t* size) {
     vtkSmartPointer<vtkPNGWriter> writer = vtkSmartPointer<vtkPNGWriter>::New();
     writer->SetWriteToMemory(true);
-    writer->SetInputData(image->GetVTKImage(0));
+    writer->SetInputData(image->GetVTKImage(this->layer));
     writer->Write();
 
     // Move JPEG wrote in memory to new malloced location
@@ -16,3 +20,6 @@ void DNLImageExtractor::get_png(DNLImage::Pointer image, char** data, size_t* si
     memcpy(*data, (char*)d->GetVoidPointer(0), *size);
 }
 
+void DNLImageExtractor::setLayer(int layer) {
+    this->layer = layer;
+}

@@ -66,6 +66,8 @@ void DNLFileImageSource::stop() {
 void DNLFileImageSource::get_all_files(const PathType& root, const std::string& ext, std::vector<PathType>& ret)
 {
     if(!boost::filesystem::exists(root) || !boost::filesystem::is_directory(root)) {
+        fprintf(stderr, "No such directory\n");
+        exit(1);
         return;
     }
 

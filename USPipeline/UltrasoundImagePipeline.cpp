@@ -3,6 +3,7 @@
 #include "UltrasoundImagePipeline.h"
 #include "DNLImageSource.h"
 #include "DNLImageExtractor.h"
+#include "DNL2DImageExtractor.h"
 #include "DNLFrameExchange.h"
 #include <Modules/USStreamingCommon/DNLImage.h>
 #include <glib.h>
@@ -23,6 +24,9 @@ void onImageWrapper(DNLImage::Pointer image, void* data) {
 
 UltrasoundImagePipeline::UltrasoundImagePipeline(USPipelineInterface* interface) {
     this->interface = interface;
+
+    extractor = nullptr;
+    thread = nullptr;
     loop = g_main_loop_new(NULL, FALSE);
     exchange = new DNLFrameExchange();
     createGstPipeline();
@@ -100,9 +104,9 @@ void UltrasoundImagePipeline::onAppSrcNeedData(GstAppSrc* appsrc, guint size) {
 
     char* d;
     size_t s;
-    DNLImageExtractor::get_png(exchange->get_frame(), &d, &s);
+    extractor->get_png(exchange->get_frame(), &d, &s);
 
-    interface->fire(SIGNAL_PIPELINE_MESSAGE, (void*)exchange->get_frame()->patientName().c_str());
+    //interface->fire(SIGNAL_PIPELINE_MESSAGE, (void*)exchange->get_frame()->patientName().c_str());
 
     GstBuffer* buffer = gst_buffer_new_wrapped(d, s);
 
@@ -117,6 +121,15 @@ void UltrasoundImagePipeline::onAppSrcNeedData(GstAppSrc* appsrc, guint size) {
 }
 
 void UltrasoundImagePipeline::onImage(DNLImage::Pointer image) {
+    // First time we receive an image, check if 2D or 3D and set up extractor
+    if (extractor == nullptr) {
+        if (image->GetNDimensions() == 2) {
+            extractor = new DNL2DImageExtractor();
+        } else {
+            extractor = new DNLImageExtractor();
+        }
+    }
+
     exchange->add_frame(image);
 }
 

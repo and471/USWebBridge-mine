@@ -6,9 +6,11 @@
 class DNLImageExtractor
 {
 public:
-    static void get_png(DNLImage::Pointer image, char** data, size_t* size);
-private:
     DNLImageExtractor();
+    void get_png(DNLImage::Pointer image, char** data, size_t* size);
+    virtual void setLayer(int layer);
+protected:
+    int layer;
 };
 
 #endif // DNLIMAGEEXTRACTOR_H
