@@ -27,6 +27,8 @@ set(LIBS ${LIBS} ${GSTREAMER_LIBRARIES})
 
 add_library(USPipelineInterface
     interface.cpp
+    UltrasoundMetadata.cpp
+    PatientMetadata.cpp
 )
 
 TARGET_LINK_LIBRARIES(USPipelineInterface

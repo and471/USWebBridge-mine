@@ -7,6 +7,7 @@
 #include "DNLFrameExchange.h"
 #include <Modules/USStreamingCommon/DNLImage.h>
 #include <glib.h>
+#include <functional>
 
 /* Wrappers for signals calling instance methods */
 static void onAppSrcNeedDataWrapper(GstAppSrc* appsrc, guint size, gpointer data);
@@ -14,13 +15,6 @@ void onAppSrcNeedDataWrapper(GstAppSrc* appsrc, guint size, gpointer data) {
     UltrasoundImagePipeline* pipeline = (UltrasoundImagePipeline*) data;
     pipeline->onAppSrcNeedData(appsrc, size);
 }
-
-static void onImageWrapper(DNLImage::Pointer image, void* data);
-void onImageWrapper(DNLImage::Pointer image, void* data) {
-    UltrasoundImagePipeline* pipeline = (UltrasoundImagePipeline*) data;
-    pipeline->onImage(image);
-}
-
 
 UltrasoundImagePipeline::UltrasoundImagePipeline(USPipelineInterface* interface) {
     this->interface = interface;
@@ -72,7 +66,9 @@ void UltrasoundImagePipeline::createGstPipeline() {
 
 void UltrasoundImagePipeline::setDNLImageSource(DNLImageSource* dnl) {
     dnl_image_source = dnl;
-    dnl_image_source->connect(&onImageWrapper, this);
+    dnl_image_source->setOnImageCallback(
+        std::bind(&UltrasoundImagePipeline::onImage, this, std::placeholders::_1)
+    );
 }
 
 void UltrasoundImagePipeline::start() {
@@ -104,9 +100,7 @@ void UltrasoundImagePipeline::onAppSrcNeedData(GstAppSrc* appsrc, guint size) {
 
     char* d;
     size_t s;
-    extractor->get_png(exchange->get_frame(), &d, &s);
-
-    //interface->fire(SIGNAL_PIPELINE_MESSAGE, (void*)exchange->get_frame()->patientName().c_str());
+    extractor->getPNG(exchange->get_frame(), &d, &s);
 
     GstBuffer* buffer = gst_buffer_new_wrapped(d, s);
 
@@ -131,6 +125,13 @@ void UltrasoundImagePipeline::onImage(DNLImage::Pointer image) {
     }
 
     exchange->add_frame(image);
+
+    // If patient metadata changes, send new metadata
+    PatientMetadata patient = extractor->getPatientMetadata(image);
+    if (!(patient == this->patient)) {
+        this->patient = patient;
+        this->interface->OnNewPatientMetadata(patient);
+    }
 }
 
 int UltrasoundImagePipeline::getFPS() {

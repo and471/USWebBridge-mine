@@ -7,7 +7,7 @@ DNLImageExtractor::DNLImageExtractor() {
     this->layer = 0;
 }
 
-void DNLImageExtractor::get_png(DNLImage::Pointer image, char** data, size_t* size) {
+void DNLImageExtractor::getPNG(DNLImage::Pointer image, char** data, size_t* size) {
     vtkSmartPointer<vtkPNGWriter> writer = vtkSmartPointer<vtkPNGWriter>::New();
     writer->SetWriteToMemory(true);
     writer->SetInputData(image->GetVTKImage(this->layer));
@@ -22,4 +22,10 @@ void DNLImageExtractor::get_png(DNLImage::Pointer image, char** data, size_t* si
 
 void DNLImageExtractor::setLayer(int layer) {
     this->layer = layer;
+}
+
+PatientMetadata DNLImageExtractor::getPatientMetadata(DNLImage::Pointer image) {
+    PatientMetadata patient;
+    patient.name = image->patientName();
+    return patient;
 }

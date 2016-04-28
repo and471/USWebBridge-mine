@@ -33,6 +33,8 @@ private:
     DNLImageSource* dnl_image_source;
     int fps = 20;
 
+    PatientMetadata patient;
+
     static void startThread(GMainLoop* loop);
     int getFPS();
     void createGstPipeline();

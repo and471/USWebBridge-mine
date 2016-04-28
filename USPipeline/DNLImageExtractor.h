@@ -2,12 +2,15 @@
 #define DNLIMAGEEXTRACTOR_H
 
 #include <Modules/USStreamingCommon/DNLImage.h>
+#include <USPipelineInterface/PatientMetadata.h>
 
 class DNLImageExtractor
 {
 public:
     DNLImageExtractor();
-    void get_png(DNLImage::Pointer image, char** data, size_t* size);
+    void getPNG(DNLImage::Pointer image, char** data, size_t* size);
+    PatientMetadata getPatientMetadata(DNLImage::Pointer image);
+
     virtual void setLayer(int layer);
 protected:
     int layer;

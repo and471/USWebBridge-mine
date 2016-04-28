@@ -1,10 +1,10 @@
 #ifndef USPIPELINEINTERFACE_H
 #define USPIPELINEINTERFACE_H
 
-#include "interface.h"
-#include <map>
+#include <functional>
 
-static int SIGNAL_PIPELINE_MESSAGE = 0;
+#include "interface.h"
+#include "PatientMetadata.h"
 
 class UltrasoundImagePipeline; // forward declare to avoid cyclic dependency
 
@@ -14,12 +14,15 @@ public:
     USPipelineInterface();
     ~USPipelineInterface();
 
-    void connect(int signal, void (*callback)(void*));
-    void fire(int signal, void* data);
+    void setOnNewPatientMetadataCallback(std::function<void(PatientMetadata)> cb);
+    void OnNewPatientMetadata(PatientMetadata patient);
+    void start();
 
 private:
     UltrasoundImagePipeline* pipeline;
-    std::map<int, void (*)(void*)>* callbacks;
+
+
+    std::function<void(PatientMetadata)> onNewPatientMetadataCallback;
 
     void (*on_pipeline_message)(char*);
 

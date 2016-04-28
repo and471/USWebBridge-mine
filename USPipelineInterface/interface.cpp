@@ -1,9 +1,12 @@
 #include <cstdio>
+#include <functional>
 #include <USPipeline/UltrasoundImagePipeline.h>
 #include <USPipeline/DNLImageSource.h>
 #include <USPipeline/DNLFileImageSource.h>
 
+#include "PatientMetadata.h"
 #include "interface.h"
+
 
 USPipelineInterface::USPipelineInterface() {
     int argc = 0;
@@ -11,11 +14,12 @@ USPipelineInterface::USPipelineInterface() {
 
     std::string folder = "/home/andrew/Project/forAndrew2D";
 
-    this->callbacks = new std::map<int, void (*)(void*)>();
-
     DNLImageSource* dnl_image_source = new DNLFileImageSource(folder);
     pipeline = new UltrasoundImagePipeline(this);
     pipeline->setDNLImageSource(dnl_image_source);
+}
+
+void USPipelineInterface::start() {
     pipeline->start();
 }
 
@@ -23,10 +27,10 @@ USPipelineInterface::~USPipelineInterface() {
     delete pipeline;
 }
 
-void USPipelineInterface::connect(int signal, void (*func)(void*)) {
-    (*(this->callbacks))[signal] = func;
+void USPipelineInterface::setOnNewPatientMetadataCallback(std::function<void(PatientMetadata)> cb) {
+    this->onNewPatientMetadataCallback = cb;
 }
 
-void USPipelineInterface::fire(int signal, void* data) {
-    this->callbacks->at(signal)(data);
+void USPipelineInterface::OnNewPatientMetadata(PatientMetadata patient) {
+    this->onNewPatientMetadataCallback(patient);
 }

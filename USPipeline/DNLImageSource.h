@@ -8,12 +8,13 @@
 #include <thread>
 #include <boost/signals2.hpp>
 #include <Modules/USStreamingCommon/DNLImage.h>
+#include <functional>
 
 class DNLImageSource {
 
 public:
 
-    void connect(void (*handler)(DNLImage::Pointer, void*), void* data);
+    void setOnImageCallback(std::function<void(DNLImage::Pointer)> cb);
     void onImage(DNLImage::Pointer image);
 
     virtual void start() = 0;
@@ -21,8 +22,7 @@ public:
 
 private:
 
-    void (*image_handler)(DNLImage::Pointer, void*) = nullptr;
-    void* image_handler_data = nullptr;
+    std::function<void(DNLImage::Pointer)> onImageCallback;
 
 };
 

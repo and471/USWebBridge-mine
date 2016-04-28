@@ -4,14 +4,13 @@
 #include <boost/date_time.hpp>
 #include <boost/date_time/posix_time/ptime.hpp>
 #include <Modules/USStreamingCommon/DNLImageReader.h>
+#include <functional>
 
-void DNLImageSource::connect(void (*handler)(DNLImage::Pointer, void*), void* data) {
-    image_handler = handler;
-    image_handler_data = data;
+
+void DNLImageSource::setOnImageCallback(std::function<void(DNLImage::Pointer)> cb) {
+    onImageCallback = cb;
 }
 
 void DNLImageSource::onImage(DNLImage::Pointer image) {
-    if (image_handler != nullptr) {
-        image_handler(image, image_handler_data);
-    }
+    onImageCallback(image);
 }
