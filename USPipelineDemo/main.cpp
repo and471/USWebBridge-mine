@@ -26,7 +26,9 @@ int main(int argc, char *argv[]) {
     pipeline->setDNLImageSource(dnl_image_source);
 
     pipeline->start();
-    g_main_loop_run(loop);
+
+    std::string tmp;
+    std::getline(std::cin, tmp);
 
     pipeline->stop();
     g_main_loop_unref(loop);

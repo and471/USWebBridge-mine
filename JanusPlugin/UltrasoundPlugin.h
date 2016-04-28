@@ -37,7 +37,7 @@ private:
     janus_plugin_session* handle;
     bool started = false;
 
-    static const char* NEW_PATIENT_METADATA = \
+    /*static const char* NEW_PATIENT_METADATA = \
     "{                                          \
         name: 'NEW_PATIENT_METADATA',           \
         data: %s                                \
@@ -47,7 +47,7 @@ private:
     "{                                          \                                \
         name: '%s'                              \
         }                                       \
-    }";
+    }";*/
 
 };
 

@@ -32,5 +32,6 @@ void USPipelineInterface::setOnNewPatientMetadataCallback(std::function<void(Pat
 }
 
 void USPipelineInterface::OnNewPatientMetadata(PatientMetadata patient) {
-    this->onNewPatientMetadataCallback(patient);
+
+    //this->onNewPatientMetadataCallback(patient);
 }

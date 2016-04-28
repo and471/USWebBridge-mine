@@ -12,13 +12,13 @@ UltrasoundPlugin::UltrasoundPlugin(USPipelineInterface* interface, janus_callbac
     this->gateway = gateway;
     this->handle = handle;
 
-    interface->setOnNewPatientMetadataCallback(std::bind(&UltrasoundPlugin::onNewPatientMetadata, this, _1));
+    //interface->setOnNewPatientMetadataCallback(std::bind(&UltrasoundPlugin::onNewPatientMetadata, this, _1));
 }
 
-void UltrasoundPlugin::onNewPatientMetadata(PatientMetadata patient) {
+/*void UltrasoundPlugin::onNewPatientMetadata(PatientMetadata patient) {
     boost::format format = boost::format(NEW_PATIENT_METADATA) % patientMetadataToJSON(patient);
     this->sendData(format);
-}
+}*/
 
 void UltrasoundPlugin::sendData(boost::format data) {
     sendData(data.str().c_str());
@@ -36,6 +36,6 @@ void UltrasoundPlugin::start() {
 }
 
 std::string UltrasoundPlugin::patientMetadataToJSON(PatientMetadata patient) {
-    boost::format format = boost::format(UltrasoundPlugin::PATIENT_METADATA) % patient.name;
-    return format.str();
+    //boost::format format = boost::format(UltrasoundPlugin::PATIENT_METADATA) % patient.name;
+    return "";
 }

@@ -519,7 +519,7 @@ long int DNLImage::GetTransducerTimeStampInt(){
     return atol(this->m_transducerTimestamp.c_str());
 }
 
-vtkSmartPointer<vtkImageData> DNLImage::GetVTKImage(int layer){
+vtkSmartPointer<vtkImageData> DNLImage::GetVTKImage(int layer) {
     if (this->m_vtkImageLayers.size() > layer){
         return this->m_vtkImageLayers[layer];
     }

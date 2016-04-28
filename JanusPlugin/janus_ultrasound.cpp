@@ -658,6 +658,7 @@ void janus_ultrasound_create_session(janus_plugin_session *handle, int *error) {
 
     USPipelineInterface* pipeline_interface = new USPipelineInterface();
     us_plugin = new UltrasoundPlugin(pipeline_interface, gateway, handle);
+    us_plugin->start();
 
 	return;
 }

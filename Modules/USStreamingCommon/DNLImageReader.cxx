@@ -257,11 +257,13 @@ vtkSmartPointer<vtkImageData> DNLImageReader::ReadFromFile(std::string &filename
             importer->SetDataScalarTypeToUnsignedChar();
             importer->SetNumberOfScalarComponents(1);
 
-            importer->SetImportVoidPointer(buffer, 0); // Check if the DNL is sending any offset or something
+            importer->SetImportVoidPointer(buffer, 1);
             importer->Update();
-            image = importer->GetOutput();
 
-            //delete [] buffer;  // If deleted, problem when writing!!!
+            image = vtkSmartPointer<vtkImageData>::New();
+            image->DeepCopy(importer->GetOutput());
+
+            delete [] buffer;  // If deleted, problem when writing!!!
 
 
         }

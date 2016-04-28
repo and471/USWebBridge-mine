@@ -78,18 +78,21 @@ void UltrasoundImagePipeline::start() {
     dnl_image_source->start();
     gst_element_set_state(pipeline, GST_STATE_PLAYING);
 
-    thread = new std::thread(startThread, loop);
+    running = true;
+    thread = new std::thread(&UltrasoundImagePipeline::startThread, this);
 }
 
-void UltrasoundImagePipeline::startThread(GMainLoop* loop) {
-    g_main_loop_run(loop);
+void UltrasoundImagePipeline::startThread() {
+    while(running) {}
 }
 
 void UltrasoundImagePipeline::stop() {
-    g_main_loop_quit(loop);
+    running = false;
 
-    thread->join();
-    thread = nullptr;
+    if (thread->joinable()){
+        thread->join();
+    }
+    delete thread;
 
     gst_element_set_state(pipeline, GST_STATE_NULL);
     dnl_image_source->stop();

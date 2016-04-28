@@ -32,10 +32,11 @@ private:
     DNLFrameExchange* exchange;
     DNLImageSource* dnl_image_source;
     int fps = 20;
+    bool running = false;
 
     PatientMetadata patient;
 
-    static void startThread(GMainLoop* loop);
+    void startThread();
     int getFPS();
     void createGstPipeline();
 };
