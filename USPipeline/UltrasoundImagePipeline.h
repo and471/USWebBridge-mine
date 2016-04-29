@@ -20,7 +20,7 @@ public:
     void start();
     void stop();
 
-    void onAppSrcNeedData(GstAppSrc *appsrc, guint size);
+    void onAppSrcNeedData(GstAppSrc *appsrc);
     void onImage(DNLImage::Pointer image);
 
 private:

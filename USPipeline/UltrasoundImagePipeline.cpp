@@ -13,7 +13,7 @@
 static void onAppSrcNeedDataWrapper(GstAppSrc* appsrc, guint size, gpointer data);
 void onAppSrcNeedDataWrapper(GstAppSrc* appsrc, guint size, gpointer data) {
     UltrasoundImagePipeline* pipeline = (UltrasoundImagePipeline*) data;
-    pipeline->onAppSrcNeedData(appsrc, size);
+    pipeline->onAppSrcNeedData(appsrc);
 }
 
 UltrasoundImagePipeline::UltrasoundImagePipeline(USPipelineInterface* interface) {
@@ -97,12 +97,18 @@ void UltrasoundImagePipeline::stop() {
     dnl_image_source->stop();
 }
 
-void UltrasoundImagePipeline::onAppSrcNeedData(GstAppSrc* appsrc, guint size) {
+void UltrasoundImagePipeline::onAppSrcNeedData(GstAppSrc* appsrc) {
     char* d;
     size_t s;
     extractor->getPNG(exchange->get_frame(), &d, &s);
 
-    GstBuffer* buffer = gst_buffer_new_wrapped(d, s);
+    GstMapInfo info;
+    GstBuffer* buffer = gst_buffer_new_allocate(NULL, s, NULL);
+    gst_buffer_map(buffer, &info, GST_MAP_WRITE);
+    memcpy(info.data, d, info.size);
+    gst_buffer_unmap(buffer, &info);
+
+    free(d);
 
     GST_BUFFER_PTS(buffer) = timestamp;
     GST_BUFFER_DURATION(buffer) = gst_util_uint64_scale_int(1, GST_SECOND, getFPS());
