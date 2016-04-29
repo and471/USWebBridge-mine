@@ -14,6 +14,8 @@ class DNLImageSource {
 
 public:
 
+    virtual ~DNLImageSource();
+
     void setOnImageCallback(std::function<void(DNLImage::Pointer)> cb);
     void onImage(DNLImage::Pointer image);
 

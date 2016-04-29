@@ -27,7 +27,7 @@ private:
     DNLImageExtractor* extractor;
     USPipelineInterface* interface;
     std::thread* thread;
-    GMainLoop* loop;
+    GstClockTime timestamp = 0;
     GstElement *pipeline, *appsrc, *pngdec, *conv, *payloader, *udpsink, *videoenc;
     DNLFrameExchange* exchange;
     DNLImageSource* dnl_image_source;

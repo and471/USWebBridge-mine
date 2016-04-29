@@ -6,6 +6,7 @@
 #include <Modules/USStreamingCommon/DNLImageReader.h>
 #include <functional>
 
+DNLImageSource::~DNLImageSource() {}
 
 void DNLImageSource::setOnImageCallback(std::function<void(DNLImage::Pointer)> cb) {
     onImageCallback = cb;

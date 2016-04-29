@@ -21,15 +21,14 @@ UltrasoundImagePipeline::UltrasoundImagePipeline(USPipelineInterface* interface)
 
     extractor = nullptr;
     thread = nullptr;
-    loop = g_main_loop_new(NULL, FALSE);
     exchange = new DNLFrameExchange();
     createGstPipeline();
 }
 
 UltrasoundImagePipeline::~UltrasoundImagePipeline() {
     delete exchange;
+    delete extractor;
     gst_object_unref(pipeline); // frees pipeline and all elements
-    g_main_loop_unref(loop);
 }
 
 void UltrasoundImagePipeline::createGstPipeline() {
@@ -99,8 +98,6 @@ void UltrasoundImagePipeline::stop() {
 }
 
 void UltrasoundImagePipeline::onAppSrcNeedData(GstAppSrc* appsrc, guint size) {
-    static GstClockTime timestamp = 0;
-
     char* d;
     size_t s;
     extractor->getPNG(exchange->get_frame(), &d, &s);
@@ -109,6 +106,7 @@ void UltrasoundImagePipeline::onAppSrcNeedData(GstAppSrc* appsrc, guint size) {
 
     GST_BUFFER_PTS(buffer) = timestamp;
     GST_BUFFER_DURATION(buffer) = gst_util_uint64_scale_int(1, GST_SECOND, getFPS());
+
     timestamp += GST_BUFFER_DURATION(buffer);
 
     GstFlowReturn ret = gst_app_src_push_buffer(appsrc, buffer);

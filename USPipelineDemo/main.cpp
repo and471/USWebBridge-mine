@@ -19,8 +19,6 @@ int main(int argc, char *argv[]) {
     gst_init(&argc, &argv);
     std::string folder = argv[1];
 
-    GMainLoop* loop = g_main_loop_new(NULL, FALSE);
-
     DNLImageSource* dnl_image_source = new DNLFileImageSource(folder);
     UltrasoundImagePipeline *pipeline = new UltrasoundImagePipeline(NULL);
     pipeline->setDNLImageSource(dnl_image_source);
@@ -31,7 +29,9 @@ int main(int argc, char *argv[]) {
     std::getline(std::cin, tmp);
 
     pipeline->stop();
-    g_main_loop_unref(loop);
+
+    delete pipeline;
+    delete dnl_image_source;
 
     return 0;
 }

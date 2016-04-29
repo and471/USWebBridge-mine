@@ -7,13 +7,16 @@
 #include <Modules/USStreamingCommon/DNLImageReader.h>
 
 DNLFileImageSource::DNLFileImageSource(std::string &folder) {
-    this->filenames.resize(0);
     this->stop_image_generation = false;
     this->thread = nullptr;
 
     // Find all image files in subfolders, and sort them in time order
-    const PathType root(folder);
-    get_all_files(root, ".mhd", this->filenames);
+    PathType root(folder);
+    get_mhd_files(root);
+}
+
+DNLFileImageSource::~DNLFileImageSource() {
+    filenames.clear();
 }
 
 void DNLFileImageSource::start() {
@@ -23,13 +26,13 @@ void DNLFileImageSource::start() {
 void DNLFileImageSource::GenerateImagesThread() {
     // Generate images from each file, and when all are exhausted, start again
     while(true) {
-        for (std::vector<PathType>::const_iterator filename = this->filenames.begin(); filename != this->filenames.end(); filename++){
+        for (PathType filename : filenames) {
 
             if (this->stop_image_generation) {
                 return;
             }
 
-            std::string name = filename->string();
+            std::string name = filename.string();
 
             DNLImageReader::Pointer reader = DNLImageReader::Pointer(new DNLImageReader());
             reader->SetFilename(name);
@@ -62,7 +65,7 @@ void DNLFileImageSource::stop() {
  * Return the filenames of all files that have the specified extension
  * in the specified directory and all subdirectories
  */
-void DNLFileImageSource::get_all_files(const PathType& root, const std::string& ext, std::vector<PathType>& ret)
+void DNLFileImageSource::get_mhd_files(PathType root)
 {
     if(!boost::filesystem::exists(root) || !boost::filesystem::is_directory(root)) {
         fprintf(stderr, "No such directory\n");
@@ -70,17 +73,13 @@ void DNLFileImageSource::get_all_files(const PathType& root, const std::string& 
         return;
     }
 
-    boost::filesystem::recursive_directory_iterator it(root);
-    boost::filesystem::recursive_directory_iterator endit;
-
-    while(it != endit) {
-        if(boost::filesystem::is_regular_file(*it) && it->path().extension() == ext) {
-            ret.push_back(it->path());
+    boost::filesystem::directory_iterator end_iter;
+    for (boost::filesystem::directory_iterator iter(root); iter != end_iter; iter++) {
+        if (boost::filesystem::is_regular_file(*iter) && iter->path().extension() == ".mhd") {
+            filenames.push_back(iter->path());
         }
-        it++;
     }
 
     /// Sort the files in ascending order of modification
-    std::sort(ret.begin(), ret.end(), mhd_file_sort());
-
+    std::sort(filenames.begin(), filenames.end(), mhd_file_sort());
 }

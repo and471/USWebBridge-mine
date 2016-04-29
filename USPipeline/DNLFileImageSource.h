@@ -31,7 +31,7 @@ private:
 
     void GenerateImagesThread();
 
-    static void get_all_files(const PathType& root, const std::string& ext, std::vector<PathType>& ret);
+    void get_mhd_files(PathType root);
 
     /// sorting filenames by ascending order of timestamp, which is part of the file name
     struct mhd_file_sort
