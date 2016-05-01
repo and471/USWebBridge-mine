@@ -1,5 +1,7 @@
-#include <gst/gst.h>
-#include <gst/app/gstappsrc.h>
+#include <gstreamermm.h>
+#include <gstreamermm/appsrc.h>
+#include <gstreamermm/buffer.h>
+
 #include "UltrasoundImagePipeline.h"
 #include "DNLImageSource.h"
 #include "DNLImageExtractor.h"
@@ -10,11 +12,11 @@
 #include <functional>
 
 /* Wrappers for signals calling instance methods */
-static void onAppSrcNeedDataWrapper(GstAppSrc* appsrc, guint size, gpointer data);
+/*static void onAppSrcNeedDataWrapper(GstAppSrc* appsrc, guint size, gpointer data);
 void onAppSrcNeedDataWrapper(GstAppSrc* appsrc, guint size, gpointer data) {
     UltrasoundImagePipeline* pipeline = (UltrasoundImagePipeline*) data;
     pipeline->onAppSrcNeedData(appsrc);
-}
+}*/
 
 UltrasoundImagePipeline::UltrasoundImagePipeline(USPipelineInterface* interface) {
     this->interface = interface;
@@ -28,39 +30,41 @@ UltrasoundImagePipeline::UltrasoundImagePipeline(USPipelineInterface* interface)
 UltrasoundImagePipeline::~UltrasoundImagePipeline() {
     delete exchange;
     delete extractor;
-    gst_object_unref(pipeline); // frees pipeline and all elements
+    //gst_object_unref(pipeline); // frees pipeline and all elements
 }
 
 void UltrasoundImagePipeline::createGstPipeline() {
     // Create pipeline elements
-    pipeline = gst_pipeline_new("pipeline");
-    appsrc = gst_element_factory_make("appsrc", "source");
-    pngdec = gst_element_factory_make("pngdec", "j");
-    conv = gst_element_factory_make("videoconvert", "conv");
-    videoenc = gst_element_factory_make("vp8enc", "ffenc_mpeg4");
-    payloader = gst_element_factory_make("rtpvp8pay", "rtpmp4vpay");
-    udpsink = gst_element_factory_make("udpsink", "udpsink");
+    pipeline = Gst::Pipeline::create();
+    appsrc = Gst::AppSrc::create();
+    pngdec = Gst::ElementFactory::create_element("pngdec");
+    conv = Gst::ElementFactory::create_element("videoconvert");
+    videoenc = Gst::ElementFactory::create_element("vp8enc");
+    payloader = Gst::ElementFactory::create_element("rtpvp8pay");
+    udpsink = Gst::ElementFactory::create_element("udpsink");
 
     // Set properties
-    GstCaps* png_caps = gst_caps_from_string("image/png");
-    g_object_set(G_OBJECT (appsrc),
-            "stream-type", 0,
-            "is-live", TRUE,
-            "format", GST_FORMAT_TIME,
-            "caps", png_caps, NULL);
-    gst_caps_unref(png_caps);
+    Glib::RefPtr<Gst::Caps> png_caps = Gst::Caps::create_simple("image/png");
+    appsrc->property("stream-type", 0);
+    appsrc->property("is-live", TRUE);
+    appsrc->property("format", Gst::FORMAT_TIME);
+    appsrc->property("caps", png_caps);
 
-    gst_preset_load_preset(GST_PRESET(videoenc), "Profile Realtime");
-    g_object_set(G_OBJECT(udpsink),
-            "host", "127.0.0.1",
-            "port", 5004, NULL);
+    // Realtime profile
+    videoenc->property("deadline", 1);
+    videoenc->property("cpu-used", 4);
+    videoenc->property("lag-in-frames", 0);
+
+    //gst_preset_load_preset(GST_PRESET(videoenc), "Profile Realtime");
+    udpsink->property<Glib::ustring>("host", "127.0.0.1");
+    udpsink->property("port", 5004);
 
     // Callbacks
-    g_signal_connect(appsrc, "need-data", G_CALLBACK(onAppSrcNeedDataWrapper), this);
+    appsrc->signal_need_data().connect(sigc::mem_fun(*this, &UltrasoundImagePipeline::onAppSrcNeedData));
 
     // Pack
-    gst_bin_add_many(GST_BIN (pipeline), appsrc, pngdec, conv, videoenc, payloader, udpsink, NULL);
-    gst_element_link_many(appsrc, pngdec, conv, videoenc, payloader, udpsink, NULL);
+    pipeline->add(appsrc)->add(pngdec)->add(conv)->add(videoenc)->add(payloader)->add(udpsink);
+    appsrc->link(pngdec)->link(conv)->link(videoenc)->link(payloader)->link(udpsink);
 }
 
 void UltrasoundImagePipeline::setDNLImageSource(DNLImageSource* dnl) {
@@ -75,7 +79,7 @@ void UltrasoundImagePipeline::start() {
         fprintf(stderr, "Cannot start new thread: thread is already running\n");
     }
     dnl_image_source->start();
-    gst_element_set_state(pipeline, GST_STATE_PLAYING);
+    pipeline->set_state(Gst::STATE_PLAYING);
 
     running = true;
     thread = new std::thread(&UltrasoundImagePipeline::startThread, this);
@@ -93,30 +97,27 @@ void UltrasoundImagePipeline::stop() {
     }
     delete thread;
 
-    gst_element_set_state(pipeline, GST_STATE_NULL);
+    pipeline->set_state(Gst::STATE_NULL);
     dnl_image_source->stop();
 }
 
-void UltrasoundImagePipeline::onAppSrcNeedData(GstAppSrc* appsrc) {
-    char* d;
-    size_t s;
-    extractor->getPNG(exchange->get_frame(), &d, &s);
+void UltrasoundImagePipeline::onAppSrcNeedData(guint _) {
+    Frame* frame = exchange->get_frame();
 
-    GstMapInfo info;
-    GstBuffer* buffer = gst_buffer_new_allocate(NULL, s, NULL);
-    gst_buffer_map(buffer, &info, GST_MAP_WRITE);
-    memcpy(info.data, d, info.size);
-    gst_buffer_unmap(buffer, &info);
+    Glib::RefPtr<Gst::Buffer> buffer = Gst::Buffer::create(frame->getSize());
+    Glib::RefPtr<Gst::MapInfo> info(new Gst::MapInfo());
+    buffer->map(info, Gst::MAP_WRITE);
+    memcpy(info->get_data(), frame->getData(), info->get_size());
+    buffer->unmap(info);
 
-    free(d);
+    delete frame;
 
-    GST_BUFFER_PTS(buffer) = timestamp;
-    GST_BUFFER_DURATION(buffer) = gst_util_uint64_scale_int(1, GST_SECOND, getFPS());
+    buffer->set_pts(timestamp);
+    buffer->set_duration(Gst::SECOND / getFPS());
+    timestamp += buffer->get_duration();
 
-    timestamp += GST_BUFFER_DURATION(buffer);
-
-    GstFlowReturn ret = gst_app_src_push_buffer(appsrc, buffer);
-    if (ret != GST_FLOW_OK) {
+    Gst::FlowReturn val = appsrc->push_buffer(buffer);
+    if (val != Gst::FLOW_OK) {
         fprintf(stderr, "Gstreamer Error\n");
     }
 }
@@ -131,7 +132,15 @@ void UltrasoundImagePipeline::onImage(DNLImage::Pointer image) {
         }
     }
 
-    exchange->add_frame(image);
+    char* data;
+    size_t size;
+    extractor->getPNG(image, &data, &size);
+
+    Frame* frame = new Frame(data, size);
+    free(data);
+
+    exchange->add_frame(frame);
+    delete frame;
 
     // If patient metadata changes, send new metadata
     PatientMetadata patient = extractor->getPatientMetadata(image);

@@ -1,7 +1,6 @@
 #include <cstdio>
-#include <gst/gst.h>
+#include <gstreamermm.h>
 #include <string>
-#include <glib.h>
 
 #include <USPipeline/DNLImageSource.h>
 #include <USPipeline/DNLFileImageSource.h>
@@ -16,7 +15,8 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    gst_init(&argc, &argv);
+
+    Gst::init(argc, argv);
     std::string folder = argv[1];
 
     DNLImageSource* dnl_image_source = new DNLFileImageSource(folder);

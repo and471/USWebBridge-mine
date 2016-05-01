@@ -1,9 +1,9 @@
 #ifndef ULTRASOUNDIMAGEPIPELINE_H
 #define ULTRASOUNDIMAGEPIPELINE_H
 
-#include <gst/gst.h>
-#include <gst/app/gstappsrc.h>
-#include <glib.h>
+#include <gstreamermm.h>
+#include <gstreamermm/appsrc.h>
+#include <glibmm.h>
 
 #include "DNLImageSource.h"
 #include "DNLImageExtractor.h"
@@ -20,15 +20,17 @@ public:
     void start();
     void stop();
 
-    void onAppSrcNeedData(GstAppSrc *appsrc);
+    void onAppSrcNeedData(guint size);
     void onImage(DNLImage::Pointer image);
 
 private:
     DNLImageExtractor* extractor;
     USPipelineInterface* interface;
     std::thread* thread;
-    GstClockTime timestamp = 0;
-    GstElement *pipeline, *appsrc, *pngdec, *conv, *payloader, *udpsink, *videoenc;
+    Gst::ClockTime timestamp = 0;
+    Glib::RefPtr<Gst::Pipeline> pipeline;
+    Glib::RefPtr<Gst::AppSrc> appsrc;
+    Glib::RefPtr<Gst::Element> pngdec, conv, payloader, udpsink, videoenc;
     DNLFrameExchange* exchange;
     DNLImageSource* dnl_image_source;
     int fps = 20;

@@ -4,14 +4,32 @@
 #include <mutex>
 #include <Modules/USStreamingCommon/DNLImage.h>
 
+
+class Frame {
+
+public:
+    Frame(char* data, size_t size);
+    ~Frame();
+
+    static Frame* copy(Frame* frame);
+    char* getData();
+    size_t getSize();
+
+private:
+    char* data;
+    size_t size;
+};
+
+
 class DNLFrameExchange
 {
 public:
-    void add_frame(DNLImage::Pointer frame);
-    DNLImage::Pointer get_frame();
+    void add_frame(Frame* frame);
+    Frame* get_frame();
+    ~DNLFrameExchange();
 
 private:
-    DNLImage::Pointer current_frame = nullptr;
+    Frame* frame = nullptr;
     std::mutex mutex;
 };
 

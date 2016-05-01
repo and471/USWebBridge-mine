@@ -3,14 +3,20 @@
 #include <USPipeline/UltrasoundImagePipeline.h>
 #include <USPipeline/DNLImageSource.h>
 #include <USPipeline/DNLFileImageSource.h>
+#include <gstreamermm.h>
 
 #include "PatientMetadata.h"
 #include "interface.h"
 
 
 USPipelineInterface::USPipelineInterface() {
-    int argc = 0;
-    gst_init(&argc, NULL);
+    int z = 0;
+    int &argc = z;
+
+    char** h = NULL;
+    char** &argv = h;
+
+    Gst::init(argc, argv);
 
     std::string folder = "/home/andrew/Project/forAndrew2D";
 
