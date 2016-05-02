@@ -33,6 +33,7 @@ add_library(USPipelineInterface
     interface.cpp
     UltrasoundMetadata.cpp
     PatientMetadata.cpp
+    UltrasoundPlugin.h
 )
 
 TARGET_LINK_LIBRARIES(USPipelineInterface

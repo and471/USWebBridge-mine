@@ -123,12 +123,12 @@ extern "C" {
 #include <janus/record.h>
 #include <janus/utils.h>
 #include <janus/plugin.h>
-#include "plugin_hooks.h"
 }
 
-#include <USPipelineInterface/interface.h>
-#include "UltrasoundPlugin.h"
+#include "plugin_hooks.h"
 
+#include <USPipelineInterface/interface.h>
+#include "JanusUltrasoundPlugin.h"
 
 
 /* Plugin creator */
@@ -137,7 +137,7 @@ janus_plugin *create(void) {
     return &janus_ultrasound_plugin;
 }
 
-static UltrasoundPlugin* us_plugin;
+static JanusUltrasoundPlugin* us_plugin;
 
 /* Static configuration instance */
 static janus_config *config = NULL;
@@ -657,8 +657,8 @@ void janus_ultrasound_create_session(janus_plugin_session *handle, int *error) {
     janus_mutex_unlock(&sessions_mutex);
 
     USPipelineInterface* pipeline_interface = new USPipelineInterface();
-    us_plugin = new UltrasoundPlugin(pipeline_interface, gateway, handle);
-    us_plugin->start();
+    us_plugin = new JanusUltrasoundPlugin(pipeline_interface, gateway, handle);
+    pipeline_interface->setPlugin(us_plugin);
 
 	return;
 }
@@ -688,6 +688,7 @@ void janus_ultrasound_destroy_session(janus_plugin_session *handle, int *error) 
 		old_sessions = g_list_append(old_sessions, session);
 	}
 	janus_mutex_unlock(&sessions_mutex);
+
 	return;
 }
 
@@ -1590,7 +1591,9 @@ struct janus_plugin_result *janus_ultrasound_handle_message(janus_plugin_session
 		g_async_queue_push(messages, msg);
 
 		return janus_plugin_result_new(JANUS_PLUGIN_OK_WAIT, NULL);
-	} else {
+    } else if(!strcasecmp(request_text, "ready")) {
+        us_plugin->start();
+    } else {
 		JANUS_LOG(LOG_VERB, "Unknown request '%s'\n", request_text);
 		error_code = JANUS_ULTRASOUND_ERROR_INVALID_REQUEST;
 		g_snprintf(error_cause, 512, "Unknown request '%s'", request_text);
@@ -2827,12 +2830,9 @@ void janus_ultrasound_incoming_data(janus_plugin_session *handle, char *buf, int
 		memcpy(text, buf, len);
 		*(text+len) = '\0';
 		JANUS_LOG(LOG_VERB, "Got a DataChannel message (%zu bytes) to bounce back: %s\n", strlen(text), text);
-		/* We send back the same text with a custom prefix */
-		const char *prefix = "Janus EchoTest here! You wrote: ";
-		char *reply = g_malloc0(strlen(prefix)+len+1);
-		g_snprintf(reply, strlen(prefix)+len+1, "%s%s", prefix, text);
-		g_free(text);
-		gateway->relay_data(handle, reply, strlen(reply));
-		g_free(reply);
+
+        us_plugin->onDataReceived(text);
+
+        g_free(text);
 	}
 }

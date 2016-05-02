@@ -4,15 +4,6 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -fpermissive")
 
-# Find Boost
-find_path(Boost_ROOT_DIR DUMMY)
-SET(CMAKE_INCLUDE_PATH ${CMAKE_INCLUDE_PATH} "${Boost_ROOT_DIR}/")
-SET(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH} "${Boost_ROOT_DIR}/libs")
-find_package(Boost)
-INCLUDE_DIRECTORIES("${Boost_INCLUDE_DIRS}")
-LINK_DIRECTORIES("${Boost_LIBRARY_DIRS}")
-SET(LIBS ${LIBS} ${Boost_LIBRARIES})
-
 # Find Jansson
 find_package(Jansson REQUIRED)
 INCLUDE_DIRECTORIES(${JANSSON_INCLUDE_DIRS})
@@ -33,7 +24,7 @@ set(LIBS ${LIBS} ${GLIB_LIBRARIES})
 
 set (SRCS
     janus_ultrasound.cpp
-    UltrasoundPlugin.cpp
+    JanusUltrasoundPlugin.cpp
     plugin_hooks.h
 )
 

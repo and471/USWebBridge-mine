@@ -22,6 +22,8 @@ public:
 
     void onAppSrcNeedData(guint size);
     void onImage(DNLImage::Pointer image);
+    void onNSlicesChanged(int nSlices);
+    void onSetSlice(int slice);
 
 private:
     DNLImageExtractor* extractor;

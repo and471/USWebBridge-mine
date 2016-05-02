@@ -3,6 +3,7 @@
 
 #include <Modules/USStreamingCommon/DNLImage.h>
 #include <USPipelineInterface/PatientMetadata.h>
+#include <functional>
 
 class DNLImageExtractor
 {
@@ -11,9 +12,18 @@ public:
     void getPNG(DNLImage::Pointer image, char** data, size_t* size);
     PatientMetadata getPatientMetadata(DNLImage::Pointer image);
 
-    virtual void setLayer(int layer);
-protected:
-    int layer;
+    void checkNSlicesChanged(vtkSmartPointer<vtkImageData> imageData);
+    void setSlice(int slice);
+
+    void onNSlicesChanged(int nSlices);
+    void setOnNSlicesChangedCallback(std::function<void(int)> cb);
+
+
+private:
+    int slice;
+    int nSlices;
+    std::function<void(int)> onNSlicesChangedCallback;
+
 };
 
 #endif // DNLIMAGEEXTRACTOR_H

@@ -3,6 +3,7 @@
 #include <USPipeline/UltrasoundImagePipeline.h>
 #include <USPipeline/DNLImageSource.h>
 #include <USPipeline/DNLFileImageSource.h>
+#include "UltrasoundPlugin.h"
 #include <gstreamermm.h>
 
 #include "PatientMetadata.h"
@@ -18,7 +19,7 @@ USPipelineInterface::USPipelineInterface() {
 
     Gst::init(argc, argv);
 
-    std::string folder = "/home/andrew/Project/forAndrew2D";
+    std::string folder = "/home/andrew/Project/forAndrew3D";
 
     DNLImageSource* dnl_image_source = new DNLFileImageSource(folder);
     pipeline = new UltrasoundImagePipeline(this);
@@ -33,11 +34,34 @@ USPipelineInterface::~USPipelineInterface() {
     delete pipeline;
 }
 
+void USPipelineInterface::setPlugin(UltrasoundPlugin* plugin) {
+    this->plugin = plugin;
+
+    this->plugin->setOnSetSliceCallback(
+        std::bind(&USPipelineInterface::onSetSlice, this, std::placeholders::_1)
+    );
+}
+
 void USPipelineInterface::setOnNewPatientMetadataCallback(std::function<void(PatientMetadata)> cb) {
     this->onNewPatientMetadataCallback = cb;
 }
 
-void USPipelineInterface::OnNewPatientMetadata(PatientMetadata patient) {
+void USPipelineInterface::onNewPatientMetadata(PatientMetadata patient) {
+    this->onNewPatientMetadataCallback(patient);
+}
 
-    //this->onNewPatientMetadataCallback(patient);
+void USPipelineInterface::setOnNSlicesChangedCallback(std::function<void(int)> cb) {
+    this->onNSlicesChangedCallback = cb;
+}
+
+void USPipelineInterface::onNSlicesChanged(int nSlices) {
+    this->onNSlicesChangedCallback(nSlices);
+}
+
+void USPipelineInterface::onSetSlice(int slice) {
+    onSetSliceCallback(slice);
+}
+
+void USPipelineInterface::setOnSetSliceCallback(std::function<void(int)> cb) {
+    this->onSetSliceCallback = cb;
 }

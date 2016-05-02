@@ -5,25 +5,25 @@
 #include "UltrasoundImagePipeline.h"
 #include "DNLImageSource.h"
 #include "DNLImageExtractor.h"
-#include "DNL2DImageExtractor.h"
 #include "DNLFrameExchange.h"
 #include <Modules/USStreamingCommon/DNLImage.h>
 #include <glib.h>
 #include <functional>
 
-/* Wrappers for signals calling instance methods */
-/*static void onAppSrcNeedDataWrapper(GstAppSrc* appsrc, guint size, gpointer data);
-void onAppSrcNeedDataWrapper(GstAppSrc* appsrc, guint size, gpointer data) {
-    UltrasoundImagePipeline* pipeline = (UltrasoundImagePipeline*) data;
-    pipeline->onAppSrcNeedData(appsrc);
-}*/
-
 UltrasoundImagePipeline::UltrasoundImagePipeline(USPipelineInterface* interface) {
     this->interface = interface;
 
-    extractor = nullptr;
     thread = nullptr;
     exchange = new DNLFrameExchange();
+    extractor = new DNLImageExtractor();
+    extractor->setOnNSlicesChangedCallback(
+        std::bind(&UltrasoundImagePipeline::onNSlicesChanged, this, std::placeholders::_1)
+    );
+
+    interface->setOnSetSliceCallback(
+        std::bind(&UltrasoundImagePipeline::onSetSlice, this, std::placeholders::_1)
+    );
+
     createGstPipeline();
 }
 
@@ -110,7 +110,6 @@ void UltrasoundImagePipeline::onAppSrcNeedData(guint _) {
     memcpy(info->get_data(), frame->getData(), info->get_size());
     buffer->unmap(info);
 
-    delete frame;
 
     buffer->set_pts(timestamp);
     buffer->set_duration(Gst::SECOND / getFPS());
@@ -120,20 +119,15 @@ void UltrasoundImagePipeline::onAppSrcNeedData(guint _) {
     if (val != Gst::FLOW_OK) {
         fprintf(stderr, "Gstreamer Error\n");
     }
+
+    delete frame;
 }
 
 void UltrasoundImagePipeline::onImage(DNLImage::Pointer image) {
-    // First time we receive an image, check if 2D or 3D and set up extractor
-    if (extractor == nullptr) {
-        if (image->GetNDimensions() == 2) {
-            extractor = new DNL2DImageExtractor();
-        } else {
-            extractor = new DNLImageExtractor();
-        }
-    }
 
     char* data;
     size_t size;
+    int slices;
     extractor->getPNG(image, &data, &size);
 
     Frame* frame = new Frame(data, size);
@@ -146,8 +140,16 @@ void UltrasoundImagePipeline::onImage(DNLImage::Pointer image) {
     PatientMetadata patient = extractor->getPatientMetadata(image);
     if (!(patient == this->patient)) {
         this->patient = patient;
-        this->interface->OnNewPatientMetadata(patient);
+        this->interface->onNewPatientMetadata(patient);
     }
+}
+
+void UltrasoundImagePipeline::onNSlicesChanged(int nSlices) {
+    this->interface->onNSlicesChanged(nSlices);
+}
+
+void UltrasoundImagePipeline::onSetSlice(int slice) {
+    this->extractor->setSlice(slice);
 }
 
 int UltrasoundImagePipeline::getFPS() {

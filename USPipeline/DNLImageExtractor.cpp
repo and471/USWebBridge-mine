@@ -5,84 +5,95 @@
 #include <vtkImageReslice.h>
 
 DNLImageExtractor::DNLImageExtractor() {
-    this->layer = 0;
+    this->slice = 0;
+    this->nSlices = 0;
 }
 
 void DNLImageExtractor::getPNG(DNLImage::Pointer image, char** data, size_t* size) {
+        vtkSmartPointer<vtkImageData> imageData = image->GetVTKImage();
+
+        // Check if number of slices has changed
+        checkNSlicesChanged(imageData);
+
+
         vtkSmartPointer<vtkImageReslice> resampler = vtkSmartPointer<vtkImageReslice>::New();
-        // input data parameters
+        resampler->SetInputData(imageData);
+
+        // Set spacing to be consistent with imageData
         double spacing[3];
-        image->GetVTKImage()->GetSpacing(spacing);
+        imageData->GetSpacing(spacing);
+        resampler->SetOutputSpacing(spacing[0], spacing[0], spacing[0]);
 
-        resampler->SetInputData(image->GetVTKImage());
-        resampler->SetOutputSpacing(spacing[0], spacing[0], spacing[0]); // 0 for example, but could be any other
+        // Select a slice for 3D imageData
+        if (image->GetNDimensions() == 3) {
 
-        //if (image->GetNDimensions() == 2){
-            //sliceData = image->GetVTKImage();
-        //} else
-        if (image->GetNDimensions() == 3){
-
-                static double axialElements[16] = {
-                         1, 0, 0, 0,
-                         0, 1, 0, 0,
-                         0, 0, 1, 0,
-                         0, 0, 0, 1 };
+            // Orientation and position
+            double sliceOrientation[16] = {
+                1, 0, 0, 0,
+                0, 1, 0, 0,
+                0, 0, 1, 0,
+                0, 0, 0, 1
+            };
+            double slicePosition[] = {0, 0, slice};
 
             vtkSmartPointer<vtkMatrix4x4> resliceAxes =  vtkSmartPointer<vtkMatrix4x4>::New();
-            resliceAxes->DeepCopy(axialElements);
-
-            //resliceAxes->Identity(); // slice on the z plane passing by (0,0,0)
-
-            double point_in_plane[] = {0,0,0};
+            resliceAxes->DeepCopy(sliceOrientation);
+            resliceAxes->SetElement(0, 3, slicePosition[0]);
+            resliceAxes->SetElement(1, 3, slicePosition[1]);
+            resliceAxes->SetElement(2, 3, slicePosition[2]);
 
             resampler->SetResliceAxes(resliceAxes);
-            resliceAxes->SetElement(0, 3, point_in_plane[0]);
-            resliceAxes->SetElement(1, 3, point_in_plane[1]);
-            resliceAxes->SetElement(2, 3, point_in_plane[2]);
-
-            //vtkSmartPointer<vtkExtractVOI> slicer = vtkSmartPointer<vtkExtractVOI>::New();
-            //slicer->SetInputData(image->GetVTKImage());
-            //int *extent = image->GetVTKImage()->GetExtent();
-            //slicer->SetVOI((extent[1]+extent[0])/2, (extent[1]+extent[0])/2, extent[2], extent[3], extent[4], extent[5]);
-            //int slice = (extent[5]+extent[4])/2;
-            //slicer->SetVOI(extent[0], extent[1], extent[2], extent[3], slice,slice);
-            //resampler->SetOutputExtent(extent[0], extent[1], extent[2], extent[3], slice,slice);
-            //slicer->Update();
-            //sliceData = vtkSmartPointer<vtkImageData>::New();
-            //sliceData->DeepCopy(slicer->GetOutput());
         }
 
         resampler->SetInterpolationModeToLinear();
         resampler->SetOutputDimensionality(2);
-        //resampler->ReleaseDataFlagOff();
-        //resampler->Update();
 
-        //sliceData = vtkSmartPointer<vtkImageData>::New();
-        //sliceData->DeepCopy(resampler->GetOutput());
-
-
-
+        // Write PNG to memory
         vtkSmartPointer<vtkPNGWriter> writer = vtkSmartPointer<vtkPNGWriter>::New();
         writer->SetWriteToMemory(true);
-        //writer->SetFileName("/home/ag09_local/data/ProjectsWithBernhard/phantomData/test.png");
-        //writer->SetInputData(sliceData);
         writer->SetInputConnection(resampler->GetOutputPort());
         writer->Update();
         writer->Write();
 
-        // Move JPEG wrote in memory to new malloced location
+        // Move in memory PNG to new malloced location
         vtkSmartPointer<vtkUnsignedCharArray> d = writer->GetResult();
         *size = (size_t)(d->GetSize()*d->GetDataTypeSize());
         *data = (char*) malloc(*size);
         memcpy(*data, (char*)d->GetVoidPointer(0), *size);
 }
 
-void DNLImageExtractor::setLayer(int layer) {
-    this->layer = layer;
+void DNLImageExtractor::checkNSlicesChanged(vtkSmartPointer<vtkImageData> imageData) {
+    int extents[6];
+    imageData->GetExtent(extents);
+    int nSlices = extents[5] - extents[4] + 1;
+
+    if (nSlices != this->nSlices) {
+        this->nSlices = nSlices;
+        onNSlicesChanged(this->nSlices);
+    }
 }
+
+void DNLImageExtractor::setOnNSlicesChangedCallback(std::function<void(int)> cb) {
+    onNSlicesChangedCallback = cb;
+}
+
+void DNLImageExtractor::onNSlicesChanged(int nSlices) {
+    onNSlicesChangedCallback(nSlices);
+}
+
+void DNLImageExtractor::setSlice(int slice) {
+    if (slice < nSlices) {
+        this->slice = slice;
+    }
+}
+
 
 PatientMetadata DNLImageExtractor::getPatientMetadata(DNLImage::Pointer image) {
     PatientMetadata patient;
     patient.name = image->patientName();
+
+
+    //TODO:remove
+    patient.name = "Joe Blo";
     return patient;
 }
