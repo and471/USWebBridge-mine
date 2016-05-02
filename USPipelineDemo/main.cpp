@@ -4,7 +4,7 @@
 
 #include <USPipeline/DNLImageSource.h>
 #include <USPipeline/DNLFileImageSource.h>
-#include <USPipeline/UltrasoundImagePipeline.h>
+#include <USPipeline/GstUltrasoundImagePipeline.h>
 
 int main(int argc, char *argv[]) {
 
@@ -20,7 +20,7 @@ int main(int argc, char *argv[]) {
     std::string folder = argv[1];
 
     DNLImageSource* dnl_image_source = new DNLFileImageSource(folder);
-    UltrasoundImagePipeline *pipeline = new UltrasoundImagePipeline(NULL);
+    GstUltrasoundImagePipeline *pipeline = new GstUltrasoundImagePipeline(NULL);
     pipeline->setDNLImageSource(dnl_image_source);
 
     pipeline->start();

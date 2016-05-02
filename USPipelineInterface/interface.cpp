@@ -1,6 +1,6 @@
 #include <cstdio>
 #include <functional>
-#include <USPipeline/UltrasoundImagePipeline.h>
+#include <USPipeline/GstUltrasoundImagePipeline.h>
 #include <USPipeline/DNLImageSource.h>
 #include <USPipeline/DNLFileImageSource.h>
 #include "UltrasoundPlugin.h"
@@ -22,8 +22,8 @@ USPipelineInterface::USPipelineInterface() {
     std::string folder = "/home/andrew/Project/forAndrew3D";
 
     DNLImageSource* dnl_image_source = new DNLFileImageSource(folder);
-    pipeline = new UltrasoundImagePipeline(this);
-    pipeline->setDNLImageSource(dnl_image_source);
+    pipeline = new GstUltrasoundImagePipeline(this);
+    ((GstUltrasoundImagePipeline*)pipeline)->setDNLImageSource(dnl_image_source);
 }
 
 void USPipelineInterface::start() {

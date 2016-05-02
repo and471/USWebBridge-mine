@@ -16,7 +16,7 @@ public:
     virtual void onSetSlice(int slice) =0;
     virtual void setOnSetSliceCallback(std::function<void(int)> cb) =0;
 
-private:
+protected:
     USPipelineInterface* interface;
     bool started = false;
     std::function<void(int)> onSetSliceCallback;

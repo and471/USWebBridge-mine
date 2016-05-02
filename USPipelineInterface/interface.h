@@ -6,6 +6,7 @@
 #include "interface.h"
 #include "PatientMetadata.h"
 #include "UltrasoundPlugin.h"
+#include "UltrasoundImagePipeline.h"
 
 class UltrasoundPlugin;
 class UltrasoundImagePipeline; // forward declare to avoid cyclic dependency

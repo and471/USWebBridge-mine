@@ -41,7 +41,7 @@ set (SRCS
  DNLFileImageSource.cpp
  DNLFrameExchange.cpp
  DNLImageExtractor.cpp
- UltrasoundImagePipeline.cpp
+ GstUltrasoundImagePipeline.cpp
 )
 
 add_library(USPipeline
