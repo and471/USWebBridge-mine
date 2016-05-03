@@ -2,6 +2,7 @@
 #define ULTRASOUNDPLUGIN_H
 
 #include "interface.h"
+#include "UltrasoundImagePipeline.h"
 #include <functional>
 
 class USPipelineInterface; // forward declaration
@@ -17,7 +18,7 @@ public:
     virtual void setOnSetSliceCallback(std::function<void(int)> cb) =0;
 
 protected:
-    USPipelineInterface* interface;
+    UltrasoundImagePipeline* pipeline;
     bool started = false;
     std::function<void(int)> onSetSliceCallback;
 

@@ -128,6 +128,7 @@ extern "C" {
 #include "plugin_hooks.h"
 
 #include <USPipelineInterface/interface.h>
+#include <USPipelineInterface/UltrasoundImagePipeline.h>
 #include "JanusUltrasoundPlugin.h"
 
 
@@ -656,9 +657,9 @@ void janus_ultrasound_create_session(janus_plugin_session *handle, int *error) {
 	g_hash_table_insert(sessions, handle, session);
     janus_mutex_unlock(&sessions_mutex);
 
-    USPipelineInterface* pipeline_interface = new USPipelineInterface();
-    us_plugin = new JanusUltrasoundPlugin(pipeline_interface, gateway, handle);
-    pipeline_interface->setPlugin(us_plugin);
+    us_plugin = new JanusUltrasoundPlugin(gateway, handle);
+    UltrasoundImagePipeline* pipeline = initGstUltrasoundImagePipelineJanusPlugin(us_plugin);
+    us_plugin->setPipeline(pipeline);
 
 	return;
 }

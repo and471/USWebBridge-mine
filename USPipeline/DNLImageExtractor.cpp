@@ -15,7 +15,6 @@ void DNLImageExtractor::getPNG(DNLImage::Pointer image, char** data, size_t* siz
         // Check if number of slices has changed
         checkNSlicesChanged(imageData);
 
-
         vtkSmartPointer<vtkImageReslice> resampler = vtkSmartPointer<vtkImageReslice>::New();
         resampler->SetInputData(imageData);
 
@@ -82,7 +81,7 @@ void DNLImageExtractor::onNSlicesChanged(int nSlices) {
 }
 
 void DNLImageExtractor::setSlice(int slice) {
-    if (slice < nSlices) {
+    if (fabs(slice) < nSlices/2.) {
         this->slice = slice;
     }
 }

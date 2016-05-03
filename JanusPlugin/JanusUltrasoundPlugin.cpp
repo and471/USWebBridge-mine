@@ -9,27 +9,23 @@
 
 using namespace std::placeholders;
 
-JanusUltrasoundPlugin::JanusUltrasoundPlugin(USPipelineInterface* interface,
-                                   janus_callbacks* gateway,
-                                   janus_plugin_session* handle)
+JanusUltrasoundPlugin::JanusUltrasoundPlugin(janus_callbacks* gateway, janus_plugin_session* handle)
 {
-    this->interface = interface;
-
-    interface->setOnNewPatientMetadataCallback(
-        std::bind(&UltrasoundPlugin::onNewPatientMetadata, this, std::placeholders::_1)
-    );
-    interface->setOnNSlicesChangedCallback(
-        std::bind(&UltrasoundPlugin::onNSlicesChanged, this, std::placeholders::_1)
-    );
-
     this->gateway = gateway;
     this->handle = handle;
 }
 
+void JanusUltrasoundPlugin::setPipeline(UltrasoundImagePipeline* pipeline) {
+    this->pipeline = pipeline;
+
+    pipeline->setOnNewPatientMetadataCallback(
+        std::bind(&UltrasoundPlugin::onNewPatientMetadata, this, std::placeholders::_1)
+    );
+}
 
 void JanusUltrasoundPlugin::start() {
     if (!started) {
-        interface->start();
+        pipeline->start();
     }
 }
 
@@ -85,3 +81,4 @@ void JanusUltrasoundPlugin::onSetSlice(int slice) {
 void JanusUltrasoundPlugin::setOnSetSliceCallback(std::function<void(int)> cb) {
     this->onSetSliceCallback = cb;
 }
+

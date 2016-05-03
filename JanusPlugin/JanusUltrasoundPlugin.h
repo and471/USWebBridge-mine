@@ -16,20 +16,19 @@ static const std::string METHOD_N_SLICES_CHANGED = "N_SLICES_CHANGED";
 class JanusUltrasoundPlugin : public UltrasoundPlugin
 {
 public:
-    JanusUltrasoundPlugin(USPipelineInterface* interface, janus_callbacks* gateway, janus_plugin_session* handle);
+    JanusUltrasoundPlugin(janus_callbacks* gateway, janus_plugin_session* handle);
+    void setPipeline(UltrasoundImagePipeline* pipeline);
 
     void sendMethod(json_t* data, std::string method);
     void sendData(json_t* obj);
-
-    void start();
-
-    void onNewPatientMetadata(PatientMetadata patient);
-    void onNSlicesChanged(int nSlices);
     void onDataReceived(char* data);
 
+    // Virtual methods
+    void start();
+    void onNewPatientMetadata(PatientMetadata patient);
+    void onNSlicesChanged(int nSlices);
     void onSetSlice(int slice);
     void setOnSetSliceCallback(std::function<void(int)> cb);
-
 
 private:
     USPipelineInterface* interface;

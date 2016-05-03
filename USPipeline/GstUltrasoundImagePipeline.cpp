@@ -10,8 +10,8 @@
 #include <glib.h>
 #include <functional>
 
-GstUltrasoundImagePipeline::GstUltrasoundImagePipeline(USPipelineInterface* interface) {
-    this->interface = interface;
+GstUltrasoundImagePipeline::GstUltrasoundImagePipeline(UltrasoundPlugin* plugin) {
+    this->plugin = plugin;
 
     thread = nullptr;
     exchange = new DNLFrameExchange();
@@ -20,7 +20,7 @@ GstUltrasoundImagePipeline::GstUltrasoundImagePipeline(USPipelineInterface* inte
         std::bind(&GstUltrasoundImagePipeline::onNSlicesChanged, this, std::placeholders::_1)
     );
 
-    interface->setOnSetSliceCallback(
+    plugin->setOnSetSliceCallback(
         std::bind(&GstUltrasoundImagePipeline::onSetSlice, this, std::placeholders::_1)
     );
 
@@ -140,12 +140,12 @@ void GstUltrasoundImagePipeline::onImage(DNLImage::Pointer image) {
     PatientMetadata patient = extractor->getPatientMetadata(image);
     if (!(patient == this->patient)) {
         this->patient = patient;
-        this->interface->onNewPatientMetadata(patient);
+        this->plugin->onNewPatientMetadata(patient);
     }
 }
 
 void GstUltrasoundImagePipeline::onNSlicesChanged(int nSlices) {
-    this->interface->onNSlicesChanged(nSlices);
+    this->plugin->onNSlicesChanged(nSlices);
 }
 
 void GstUltrasoundImagePipeline::onSetSlice(int slice) {
@@ -156,3 +156,10 @@ int GstUltrasoundImagePipeline::getFPS() {
     return fps;
 }
 
+void GstUltrasoundImagePipeline::setOnNewPatientMetadataCallback(std::function<void(PatientMetadata)> cb) {
+    this->onNewPatientMetadataCallback = cb;
+}
+
+void GstUltrasoundImagePipeline::onNewPatientMetadata(PatientMetadata patient) {
+    this->onNewPatientMetadataCallback(patient);
+}
