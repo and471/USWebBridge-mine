@@ -45,10 +45,13 @@ void GstUltrasoundImagePipeline::createGstPipeline() {
 
     // Set properties
     Glib::RefPtr<Gst::Caps> png_caps = Gst::Caps::create_simple("image/png");
-    appsrc->property("stream-type", 0);
+    appsrc->property("stream-type", Gst::APP_STREAM_TYPE_STREAM );
     appsrc->property("is-live", TRUE);
     appsrc->property("format", Gst::FORMAT_TIME);
     appsrc->property("caps", png_caps);
+    appsrc->property("size", -1);
+    appsrc->property("max-bytes", 10000);
+    appsrc->property("block", true);
 
     // Realtime profile
     videoenc->property("deadline", 1);
@@ -61,6 +64,8 @@ void GstUltrasoundImagePipeline::createGstPipeline() {
 
     // Callbacks
     appsrc->signal_need_data().connect(sigc::mem_fun(*this, &GstUltrasoundImagePipeline::onAppSrcNeedData));
+    appsrc->signal_enough_data().connect(sigc::mem_fun(*this, &GstUltrasoundImagePipeline::onEnough));
+
 
     // Pack
     pipeline->add(appsrc)->add(pngdec)->add(conv)->add(videoenc)->add(payloader)->add(udpsink);
@@ -103,6 +108,8 @@ void GstUltrasoundImagePipeline::stop() {
 
 void GstUltrasoundImagePipeline::onAppSrcNeedData(guint _) {
     Frame* frame = exchange->get_frame();
+
+    int queued = appsrc->property_current_level_bytes();
 
     Glib::RefPtr<Gst::Buffer> buffer = Gst::Buffer::create(frame->getSize());
     Glib::RefPtr<Gst::MapInfo> info(new Gst::MapInfo());
@@ -163,3 +170,8 @@ void GstUltrasoundImagePipeline::setOnNewPatientMetadataCallback(std::function<v
 void GstUltrasoundImagePipeline::onNewPatientMetadata(PatientMetadata patient) {
     this->onNewPatientMetadataCallback(patient);
 }
+
+void GstUltrasoundImagePipeline::onEnough() {
+    printf("ENOUUUGH!!!");
+}
+

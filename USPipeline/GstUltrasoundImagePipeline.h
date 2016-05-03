@@ -24,6 +24,8 @@ public:
     void onImage(DNLImage::Pointer image);
     void onNSlicesChanged(int nSlices);
 
+    void onEnough();
+
     // Virtual methods
     void start();
     void stop();

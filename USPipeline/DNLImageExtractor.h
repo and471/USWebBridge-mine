@@ -4,6 +4,7 @@
 #include <Modules/USStreamingCommon/DNLImage.h>
 #include <USPipelineInterface/PatientMetadata.h>
 #include <functional>
+#include <vtkPNGWriter.h>
 
 class DNLImageExtractor
 {
@@ -23,7 +24,7 @@ private:
     int slice;
     int nSlices;
     std::function<void(int)> onNSlicesChangedCallback;
-
+    vtkPNGWriter* pngWriter = vtkPNGWriter::New();
 };
 
 #endif // DNLIMAGEEXTRACTOR_H
