@@ -10,6 +10,7 @@ class DNLImageExtractor
 {
 public:
     DNLImageExtractor();
+    ~DNLImageExtractor();
     void getPNG(DNLImage::Pointer image, char** data, size_t* size);
     PatientMetadata getPatientMetadata(DNLImage::Pointer image);
 

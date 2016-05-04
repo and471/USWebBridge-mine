@@ -14,7 +14,7 @@ GstUltrasoundImagePipeline::GstUltrasoundImagePipeline(UltrasoundPlugin* plugin)
     this->plugin = plugin;
 
     thread = nullptr;
-    exchange = new DNLFrameExchange();
+    exchange = new FrameExchange();
     extractor = new DNLImageExtractor();
     extractor->setOnNSlicesChangedCallback(
         std::bind(&GstUltrasoundImagePipeline::onNSlicesChanged, this, std::placeholders::_1)

@@ -39,7 +39,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
 set (SRCS
  DNLImageSource.cpp
  DNLFileImageSource.cpp
- DNLFrameExchange.cpp
+ FrameExchange.cpp
  DNLImageExtractor.cpp
  GstUltrasoundImagePipeline.cpp
 )

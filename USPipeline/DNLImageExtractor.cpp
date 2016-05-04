@@ -5,7 +5,7 @@
 #include <vtkImageReslice.h>
 
 DNLImageExtractor::DNLImageExtractor() {
-    this->slice = 58;
+    this->slice = 0;
     this->nSlices = 0;
 }
 
@@ -20,8 +20,8 @@ void DNLImageExtractor::getPNG(DNLImage::Pointer image, char** data, size_t* siz
         // Check if number of slices has changed
         checkNSlicesChanged(imageData);
 
-        vtkMatrix4x4* resliceAxes;
-        vtkImageReslice* resampler = vtkImageReslice::New();
+        vtkSmartPointer<vtkMatrix4x4> resliceAxes;
+        vtkSmartPointer<vtkImageReslice> resampler = vtkSmartPointer<vtkImageReslice>::New();
         resampler->SetInputData(imageData);
 
         // Set spacing to be consistent with imageData
@@ -64,9 +64,6 @@ void DNLImageExtractor::getPNG(DNLImage::Pointer image, char** data, size_t* siz
         *size = (size_t)(d->GetSize()*d->GetDataTypeSize());
         *data = (char*) malloc(*size);
         memcpy(*data, (char*)d->GetVoidPointer(0), *size);
-
-        resliceAxes->Delete();
-        resampler->Delete();
 }
 
 void DNLImageExtractor::checkNSlicesChanged(vtkSmartPointer<vtkImageData> imageData) {
@@ -89,6 +86,7 @@ void DNLImageExtractor::onNSlicesChanged(int nSlices) {
 }
 
 void DNLImageExtractor::setSlice(int slice) {
+    // Slice can be a value between -nSlices/2 and nSlices/2
     if (fabs(slice) < nSlices/2.) {
         this->slice = slice;
     }

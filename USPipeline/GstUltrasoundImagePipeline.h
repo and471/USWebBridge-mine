@@ -41,7 +41,7 @@ private:
     Glib::RefPtr<Gst::Pipeline> pipeline;
     Glib::RefPtr<Gst::AppSrc> appsrc;
     Glib::RefPtr<Gst::Element> pngdec, conv, payloader, udpsink, videoenc;
-    DNLFrameExchange* exchange;
+    FrameExchange* exchange;
     DNLImageSource* dnl_image_source;
     bool running = false;
 

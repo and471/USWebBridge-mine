@@ -2,14 +2,14 @@
 #include <Modules/USStreamingCommon/DNLImage.h>
 #include <thread>
 
-void DNLFrameExchange::add_frame(Frame* frame) {
+void FrameExchange::add_frame(Frame* frame) {
     mutex.lock();
     delete this->frame;
     this->frame = Frame::copy(frame);
     mutex.unlock();
 }
 
-Frame* DNLFrameExchange::get_frame() {
+Frame* FrameExchange::get_frame() {
 
     // Block until we have at least one frame
     while (frame == nullptr) {
@@ -22,7 +22,7 @@ Frame* DNLFrameExchange::get_frame() {
     return copy;
 }
 
-DNLFrameExchange::~DNLFrameExchange() {
+FrameExchange::~FrameExchange() {
     delete frame;
 }
 
