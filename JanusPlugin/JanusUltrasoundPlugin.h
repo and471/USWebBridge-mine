@@ -17,6 +17,8 @@ class JanusUltrasoundPlugin : public UltrasoundPlugin
 {
 public:
     JanusUltrasoundPlugin(janus_callbacks* gateway, janus_plugin_session* handle);
+    ~JanusUltrasoundPlugin();
+
     void setPipeline(UltrasoundImagePipeline* pipeline);
 
     void sendMethod(json_t* data, std::string method);

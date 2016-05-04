@@ -690,6 +690,8 @@ void janus_ultrasound_destroy_session(janus_plugin_session *handle, int *error) 
 	}
 	janus_mutex_unlock(&sessions_mutex);
 
+    delete us_plugin;
+
 	return;
 }
 

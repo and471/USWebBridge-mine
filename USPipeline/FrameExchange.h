@@ -21,12 +21,12 @@ private:
 };
 
 
-class DNLFrameExchange
+class FrameExchange
 {
 public:
     void add_frame(Frame* frame);
     Frame* get_frame();
-    ~DNLFrameExchange();
+    ~FrameExchange();
 
 private:
     Frame* frame = nullptr;

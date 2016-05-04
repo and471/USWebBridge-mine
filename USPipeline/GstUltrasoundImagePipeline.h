@@ -8,7 +8,7 @@
 
 #include "DNLImageSource.h"
 #include "DNLImageExtractor.h"
-#include "DNLFrameExchange.h"
+#include "FrameExchange.h"
 #include <USPipelineInterface/UltrasoundImagePipeline.h>
 #include <USPipelineInterface/UltrasoundPlugin.h>
 #include <USPipelineInterface/PatientMetadata.h>

@@ -15,6 +15,12 @@ JanusUltrasoundPlugin::JanusUltrasoundPlugin(janus_callbacks* gateway, janus_plu
     this->handle = handle;
 }
 
+JanusUltrasoundPlugin::~JanusUltrasoundPlugin()
+{
+    delete this->pipeline;
+}
+
+
 void JanusUltrasoundPlugin::setPipeline(UltrasoundImagePipeline* pipeline) {
     this->pipeline = pipeline;
 
@@ -61,10 +67,11 @@ void JanusUltrasoundPlugin::sendData(json_t* obj) {
 
 void JanusUltrasoundPlugin::onDataReceived(char* msg) {
     json_t* obj = json_loads(msg, 0, NULL);
+    if (obj == NULL) return;
+
     char* method = json_string_value(json_object_get(obj, "method"));
 
     json_t* data = json_object_get(obj, "data");
-
 
     if (strcmp(method, "SET_SLICE") == 0) {
         int slice = json_integer_value(json_object_get(data, "slice"));

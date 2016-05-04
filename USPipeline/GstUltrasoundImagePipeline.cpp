@@ -5,7 +5,7 @@
 #include "GstUltrasoundImagePipeline.h"
 #include "DNLImageSource.h"
 #include "DNLImageExtractor.h"
-#include "DNLFrameExchange.h"
+#include "FrameExchange.h"
 #include <Modules/USStreamingCommon/DNLImage.h>
 #include <glib.h>
 #include <functional>
