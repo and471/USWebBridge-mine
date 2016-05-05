@@ -30,7 +30,6 @@ link_directories(${GSTMM_LIBRARY_DIRS})
 set(LIBS ${LIBS} ${GSTMM_LIBRARIES})
 
 add_library(USPipelineInterface
-    interface.cpp
     UltrasoundMetadata.cpp
     PatientMetadata.cpp
     UltrasoundController.h
@@ -40,6 +39,5 @@ add_library(USPipelineInterface
 )
 
 TARGET_LINK_LIBRARIES(USPipelineInterface
-    USPipeline
     ${LIBS}
 )

@@ -1,8 +1,9 @@
-#include <USPipelineInterface/interface.h>
-#include <USPipelineInterface/PatientMetadata.h>
 #include <cstdio>
 #include <functional>
 #include <jansson.h>
+
+#include <USPipelineInterface/FrameSource.h>
+#include <USPipelineInterface/UltrasoundImagePipeline.h>
 #include <USPipelineInterface/UltrasoundController.h>
 
 #include "JanusUltrasoundSession.h"
@@ -13,17 +14,18 @@ JanusUltrasoundSession::JanusUltrasoundSession(janus_callbacks* gateway, janus_p
 {
     this->gateway = gateway;
     this->handle = handle;
-
-    pipeline = createPipeline(this);
-    pipeline->setFrameSource(getFrameSource());
-    pipeline->setOnNewPatientMetadataCallback(
-        std::bind(&UltrasoundController::onNewPatientMetadata, this, std::placeholders::_1)
-    );
 }
 
 JanusUltrasoundSession::~JanusUltrasoundSession()
 {
     delete this->pipeline;
+}
+
+void JanusUltrasoundSession::setPipeline(UltrasoundImagePipeline *pipeline) {
+    this->pipeline = pipeline;
+    pipeline->setOnNewPatientMetadataCallback(
+        std::bind(&UltrasoundController::onNewPatientMetadata, this, std::placeholders::_1)
+    );
 }
 
 void JanusUltrasoundSession::start() {

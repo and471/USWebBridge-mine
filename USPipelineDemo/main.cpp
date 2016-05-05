@@ -3,8 +3,8 @@
 #include <string>
 
 #include <USPipelineInterface/FrameSource.h>
-#include <USPipeline/DNLFileFrameSource.h>
-#include <USPipeline/GstUltrasoundImagePipeline.h>
+#include <DNLFrameSource/DNLFileFrameSource.h>
+#include <GstPipeline/GstUltrasoundImagePipeline.h>
 
 int main(int argc, char *argv[]) {
 

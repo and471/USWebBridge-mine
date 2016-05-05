@@ -1,10 +1,11 @@
 #ifndef ULTRASOUNDPLUGIN_H
 #define ULTRASOUNDPLUGIN_H
 
-#include "interface.h"
 #include "UltrasoundImagePipeline.h"
+#include "PatientMetadata.h"
 #include <functional>
 
+class UltrasoundImagePipeline; // forward declaration
 class USPipelineInterface; // forward declaration
 
 class UltrasoundController

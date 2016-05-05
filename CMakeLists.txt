@@ -49,8 +49,8 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 # add subdirectories for all the tools and libraries
 
 add_subdirectory(Modules)
-
-add_subdirectory(USPipeline)
+add_subdirectory(DNLFrameSource)
+add_subdirectory(GstPipeline)
 add_subdirectory(USPipelineInterface)
 
 option (BUILD_SIMULATOR   "Build USPipeline demo" ON)

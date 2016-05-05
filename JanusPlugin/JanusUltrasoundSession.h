@@ -2,13 +2,15 @@
 #define JANUS_ULTRASOUNDSESSION_H
 
 #include <janus/plugin.h>
-#include "plugin_hooks.h"
-#include <USPipelineInterface/UltrasoundController.h>
-
-#include <USPipelineInterface/interface.h>
-#include <USPipelineInterface/PatientMetadata.h>
 #include <functional>
 #include <jansson.h>
+
+#include <USPipelineInterface/PatientMetadata.h>
+#include <USPipelineInterface/FrameSource.h>
+#include <USPipelineInterface/UltrasoundImagePipeline.h>
+#include <USPipelineInterface/UltrasoundController.h>
+
+#include "plugin_hooks.h"
 
 static const std::string METHOD_NEW_PATIENT_METADATA = "NEW_PATIENT_METADATA";
 static const std::string METHOD_N_SLICES_CHANGED = "N_SLICES_CHANGED";
@@ -22,6 +24,7 @@ public:
     void sendMethod(json_t* data, std::string method);
     void sendData(json_t* obj);
     void onDataReceived(char* data);
+    void setPipeline(UltrasoundImagePipeline* pipeline);
 
     // Virtual methods
     void start();

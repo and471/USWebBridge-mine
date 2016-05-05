@@ -1,5 +1,6 @@
-#include <USPipelineInterface/interface.h>
 #include <USPipelineInterface/FrameSource.h>
+#include <GstPipeline/GstUltrasoundImagePipeline.h>
+#include <DNLFrameSource/DNLFileFrameSource.h>
 #include "JanusUltrasoundSession.h"
 #include "JanusUltrasoundPlugin.h"
 
@@ -8,11 +9,14 @@ using namespace std::placeholders;
 JanusUltrasoundPlugin::JanusUltrasoundPlugin(janus_callbacks* gateway)
 {
     this->gateway = gateway;
-    this->frame_source = getFrameSource();
+    frame_source = createFrameSource();
 }
 
 void JanusUltrasoundPlugin::newSession(janus_plugin_session* handle) {
     JanusUltrasoundSession* session = new JanusUltrasoundSession(gateway, handle);
+    UltrasoundImagePipeline* pipeline = createPipeline(session);
+    session->setPipeline(pipeline);
+
     sessions[handle] = session;
 }
 
@@ -28,6 +32,17 @@ void JanusUltrasoundPlugin::onSessionReady(janus_plugin_session* handle) {
 
 void JanusUltrasoundPlugin::onDataReceived(janus_plugin_session* handle, char* msg) {
     sessions[handle]->onDataReceived(msg);
+}
+
+FrameSource* JanusUltrasoundPlugin::createFrameSource() {
+    std::string folder = "/home/andrew/Project/forAndrew3D";
+    return new DNLFileFrameSource(folder);
+}
+
+UltrasoundImagePipeline* JanusUltrasoundPlugin::createPipeline(UltrasoundController* controller) {
+    GstUltrasoundImagePipeline* pipeline = new GstUltrasoundImagePipeline(controller);
+    pipeline->setFrameSource(frame_source);
+    return pipeline;
 }
 
 

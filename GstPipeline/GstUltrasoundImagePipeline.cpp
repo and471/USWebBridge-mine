@@ -5,9 +5,9 @@
 #include "GstUltrasoundImagePipeline.h"
 #include "FrameExchange.h"
 #include <USPipelineInterface/FrameSource.h>
-#include <Modules/USStreamingCommon/DNLImage.h>
 #include <glib.h>
 #include <functional>
+#include <cstring>
 
 static bool initialised = false;
 static int portCounter = 0;

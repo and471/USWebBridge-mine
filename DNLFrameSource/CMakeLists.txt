@@ -21,33 +21,19 @@ find_package(VTK REQUIRED)
 INCLUDE(${VTK_USE_FILE})
 SET(LIBS ${LIBS} ${VTK_LIBRARIES})
 
-# Find GLibmm
-pkg_check_modules(GLIBMM REQUIRED glibmm-2.4)
-include_directories(${GLIBMM_INCLUDE_DIRS})
-link_directories(${GLIBMM_LIBRARY_DIRS})
-set(LIBS ${LIBS} ${GLIBMM_LIBRARIES})
-
-# Find Gstreamermm
-pkg_check_modules(GSTMM REQUIRED gstreamermm-1.0)
-include_directories(${GSTMM_INCLUDE_DIRS})
-link_directories(${GSTMM_LIBRARY_DIRS})
-set(LIBS ${LIBS} ${GSTMM_LIBRARIES})
-
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
 
 set (SRCS
  DNLFrameSource.cpp
  DNLFileFrameSource.cpp
- FrameExchange.cpp
- GstUltrasoundImagePipeline.cpp
 )
 
-add_library(USPipeline
+add_library(DNLFrameSource
     ${SRCS}
 )
 
-TARGET_LINK_LIBRARIES(USPipeline
+TARGET_LINK_LIBRARIES(DNLFrameSource
          pthread
          USStreamingCommon
          USPipelineInterface

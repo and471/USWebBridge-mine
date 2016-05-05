@@ -2,7 +2,6 @@
 #define JANUS_ULTRASOUNDPLUGIN_H
 
 #include <janus/plugin.h>
-#include <USPipelineInterface/interface.h>
 #include <USPipelineInterface/FrameSource.h>
 
 #include "plugin_hooks.h"
@@ -19,6 +18,10 @@ public:
     void destroySession(janus_plugin_session* handle);
     void onSessionReady(janus_plugin_session* handle);
     void onDataReceived(janus_plugin_session* handle, char* msg);
+
+    FrameSource* createFrameSource();
+    UltrasoundImagePipeline* createPipeline(UltrasoundController* controller);
+
 
 private:
     FrameSource* frame_source;

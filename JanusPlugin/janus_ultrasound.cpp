@@ -127,7 +127,6 @@ extern "C" {
 
 #include "plugin_hooks.h"
 
-#include <USPipelineInterface/interface.h>
 #include <USPipelineInterface/UltrasoundImagePipeline.h>
 #include "JanusUltrasoundPlugin.h"
 
