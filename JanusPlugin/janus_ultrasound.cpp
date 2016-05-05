@@ -375,10 +375,6 @@ void *janus_ultrasound_watchdog(void *data) {
 	return NULL;
 }
 
-void on_pipeline_message(void* msg);
-void on_pipeline_message(void* msg) {
-    printf("Message from the pipeline: %s\n", (char*)msg);
-}
 
 /* Plugin implementation */
 int janus_ultrasound_init(janus_callbacks *callback, const char *config_path) {
