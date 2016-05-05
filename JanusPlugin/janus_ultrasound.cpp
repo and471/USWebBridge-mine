@@ -112,6 +112,7 @@ url = RTSP stream URL (only if type=rtsp)
 #include <errno.h>
 #include <sys/poll.h>
 #include <sys/time.h>
+#include <boost/format.hpp>
 
 extern "C" {
 #include <janus/debug.h>
@@ -126,6 +127,7 @@ extern "C" {
 }
 
 #include "plugin_hooks.h"
+#include "janus_ultrasound.h"
 
 #include <USPipelineInterface/UltrasoundImagePipeline.h>
 #include "JanusUltrasoundPlugin.h"
@@ -226,6 +228,10 @@ typedef struct janus_ultrasound_mountpoint {
 GHashTable *mountpoints;
 static GList *old_mountpoints;
 janus_mutex mountpoints_mutex;
+
+
+//TODO move
+char* createSDP(janus_ultrasound_mountpoint* mp);
 
 static void janus_ultrasound_mountpoint_free(janus_ultrasound_mountpoint *mp);
 
@@ -754,7 +760,7 @@ struct janus_plugin_result *janus_ultrasound_handle_message(janus_plugin_session
     if(!strcasecmp(request_text, "watch") || !strcasecmp(request_text, "start")
 			|| !strcasecmp(request_text, "pause") || !strcasecmp(request_text, "stop")
 			|| !strcasecmp(request_text, "switch")) {
-		/* These messages are handled asynchronously */
+        /* These messages are handled asynchronously in janus_ultrasound_handler */
 		janus_ultrasound_message *msg = g_malloc0(sizeof(janus_ultrasound_message));
 		if(msg == NULL) {
 			JANUS_LOG(LOG_FATAL, "Memory error!\n");
@@ -1053,81 +1059,8 @@ static void *janus_ultrasound_handler(void *data) {
 			mp->listeners = g_list_append(mp->listeners, session);
 			janus_mutex_unlock(&mp->mutex);
 			sdp_type = "offer";	/* We're always going to do the offer ourselves, never answer */
-			char sdptemp[2048];
-			memset(sdptemp, 0, 2048);
-			gchar buffer[512];
-			memset(buffer, 0, 512);
-			gint64 sessid = janus_get_real_time();
-			gint64 version = sessid;	/* FIXME This needs to be increased when it changes, so time should be ok */
-			g_snprintf(buffer, 512,
-				"v=0\r\no=%s %"SCNu64" %"SCNu64" IN IP4 127.0.0.1\r\n",
-					"-", sessid, version);
-			g_strlcat(sdptemp, buffer, 2048);
-			g_strlcat(sdptemp, "s=Streaming Test\r\nt=0 0\r\n", 2048);
-			if(mp->codecs.audio_pt >= 0) {
-				/* Add audio line */
-				g_snprintf(buffer, 512,
-					"m=audio 1 RTP/SAVPF %d\r\n"
-					"c=IN IP4 1.1.1.1\r\n",
-					mp->codecs.audio_pt);
-				g_strlcat(sdptemp, buffer, 2048);
-				if(mp->codecs.audio_rtpmap) {
-					g_snprintf(buffer, 512,
-						"a=rtpmap:%d %s\r\n",
-						mp->codecs.audio_pt, mp->codecs.audio_rtpmap);
-					g_strlcat(sdptemp, buffer, 2048);
-				}
-				if(mp->codecs.audio_fmtp) {
-					g_snprintf(buffer, 512,
-						"a=fmtp:%d %s\r\n",
-						mp->codecs.audio_pt, mp->codecs.audio_fmtp);
-					g_strlcat(sdptemp, buffer, 2048);
-				}
-				g_strlcat(sdptemp, "a=sendonly\r\n", 2048);
-			}
-			if(mp->codecs.video_pt >= 0) {
-				/* Add video line */
-				g_snprintf(buffer, 512,
-					"m=video 1 RTP/SAVPF %d\r\n"
-					"c=IN IP4 1.1.1.1\r\n",
-					mp->codecs.video_pt);
-				g_strlcat(sdptemp, buffer, 2048);
-				if(mp->codecs.video_rtpmap) {
-					g_snprintf(buffer, 512,
-						"a=rtpmap:%d %s\r\n",
-						mp->codecs.video_pt, mp->codecs.video_rtpmap);
-					g_strlcat(sdptemp, buffer, 2048);
-				}
-				if(mp->codecs.video_fmtp) {
-					g_snprintf(buffer, 512,
-						"a=fmtp:%d %s\r\n",
-						mp->codecs.video_pt, mp->codecs.video_fmtp);
-					g_strlcat(sdptemp, buffer, 2048);
-				}
-				g_snprintf(buffer, 512,
-					"a=rtcp-fb:%d nack\r\n",
-					mp->codecs.video_pt);
-				g_strlcat(sdptemp, buffer, 2048);
-				g_snprintf(buffer, 512,
-					"a=rtcp-fb:%d goog-remb\r\n",
-					mp->codecs.video_pt);
-				g_strlcat(sdptemp, buffer, 2048);
-				g_strlcat(sdptemp, "a=sendonly\r\n", 2048);
-			}
 
-
-
-//DATACHANNEL
-#define sdp_d_template \
-		"m=application 1 DTLS/SCTP 5000\r\n" \
-		"c=IN IP4 1.1.1.1\r\n" \
-		"a=sctpmap:5000 webrtc-datachannel 16\r\n"
-
-			g_strlcat(sdptemp, sdp_d_template, 2048);
-
-
-			sdp = g_strdup(sdptemp);
-			JANUS_LOG(LOG_VERB, "Going to offer this SDP:\n%s\n", sdp);
+            sdp = createSDP(mp);
 
 			result = json_object();
 			json_object_set_new(result, "status", json_string("preparing"));
@@ -1992,29 +1925,79 @@ static gboolean janus_ultrasound_is_keyframe(gint codec, char* buffer, int len) 
 	}
 }
 
+void janus_ultrasound_incoming_data(janus_plugin_session *handle, char* buffer, int length) {
+    Plugin::incomingData(handle, buffer, length);
+}
 
+void Plugin::incomingData(janus_plugin_session *handle, char* buffer, int length) {
+    // Check plugin health
+    if (handle == NULL || handle->stopped || g_atomic_int_get(&stopping) ||
+        !g_atomic_int_get(&initialized) || gateway == NULL)
+    {
+        return;
+    }
 
-void janus_ultrasound_incoming_data(janus_plugin_session *handle, char *buf, int len) {
-	if(handle == NULL || handle->stopped || g_atomic_int_get(&stopping) || !g_atomic_int_get(&initialized))
-		return;
-	/* Simple echo test */
-	if(gateway) {
-		janus_ultrasound_session *session = (janus_ultrasound_session *)handle->plugin_handle;	
-		if(!session) {
-			JANUS_LOG(LOG_ERR, "No session associated with this handle...\n");
-			return;
-		}
-		if(session->destroyed)
-			return;
-		if(buf == NULL || len <= 0)
-			return;
-		char *text = g_malloc0(len+1);
-		memcpy(text, buf, len);
-		*(text+len) = '\0';
-		JANUS_LOG(LOG_VERB, "Got a DataChannel message (%zu bytes) to bounce back: %s\n", strlen(text), text);
+    // Check session health
+    janus_ultrasound_session *session = (janus_ultrasound_session *)handle->plugin_handle;
+    if (session == NULL || session->destroyed) {
+        JANUS_LOG(LOG_ERR, "No session associated with this handle...\n");
+        return;
+    }
 
-        us_plugin->onDataReceived(handle, text);
+    // Check message
+    if (buffer == NULL || length <= 0) {
+        return;
+    }
 
-        g_free(text);
-	}
+    // Pass on null-terminated string
+    char* msg = (char*) malloc(length+1);
+    memcpy(msg, buffer, length);
+    msg[length] = '\0';
+
+    us_plugin->onDataReceived(handle, msg);
+
+    free(msg);
+}
+
+char* createSDP(janus_ultrasound_mountpoint* mp) {
+    gint64 sessid = janus_get_real_time();
+    gint64 version = sessid;
+    std::string general = str(boost::format("%s\r\n%s\r\n%s\r\n%s\r\n") %
+        "v=0" %
+        str(boost::format("o=- %llu %llu IN IP4 127.0.0.1") % sessid % version) %
+        "s=Streaming Test" %
+        "t=0 0"
+    );
+
+    std::string audio = "";
+    if(mp->codecs.audio_pt >= 0) {
+        audio = str(boost::format("%s\r\n%s\r\n%s\r\n%s\r\n") %
+            str(boost::format("m=audio 1 RTP/SAVPF %d") % mp->codecs.audio_pt) %
+            "c=IN IP4 1.1.1.1" %
+            str(boost::format("a=rtpmap:%d %s") % mp->codecs.audio_pt % mp->codecs.audio_rtpmap) %
+            "a=sendonly"
+        );
+    }
+
+    std::string video = "";
+    if(mp->codecs.video_pt >= 0) {
+        video = str(boost::format("%s\r\n%s\r\n%s\r\n%s\r\n%s\r\n%s\r\n") %
+            str(boost::format("m=video 1 RTP/SAVPF %d") % mp->codecs.video_pt) %
+            "c=IN IP4 1.1.1.1" %
+            str(boost::format("a=rtpmap:%d %s") % mp->codecs.video_pt % mp->codecs.video_rtpmap) %
+            str(boost::format("a=rtcp-fb:%d nack") % mp->codecs.video_pt) %
+            str(boost::format("a=rtcp-fb:%d goog-remb") % mp->codecs.video_pt) %
+            "a=sendonly"
+        );
+    }
+
+    std::string data = str(boost::format("%s\r\n%s\r\n%s\r\n") %
+       "m=application 1 DTLS/SCTP 5000" %
+       "c=IN IP4 1.1.1.1" %
+       "a=sctpmap:5000 webrtc-datachannel 16"
+    );
+
+    std::string sdp = general + audio + video + data;
+
+    return strdup(sdp.c_str());
 }
