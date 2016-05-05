@@ -8,7 +8,7 @@
 #include <thread>
 #include "FrameExchange.h"
 #include <USPipelineInterface/UltrasoundImagePipeline.h>
-#include <USPipelineInterface/UltrasoundPlugin.h>
+#include <USPipelineInterface/UltrasoundController.h>
 #include <USPipelineInterface/PatientMetadata.h>
 #include <USPipelineInterface/FrameSource.h>
 

@@ -3,7 +3,7 @@
 #include <USPipeline/GstUltrasoundImagePipeline.h>
 #include "FrameSource.h"
 #include <USPipeline/DNLFileFrameSource.h>
-#include "UltrasoundPlugin.h"
+#include "UltrasoundController.h"
 #include <gstreamermm.h>
 
 #include "PatientMetadata.h"

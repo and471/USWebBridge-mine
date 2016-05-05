@@ -33,7 +33,7 @@ add_library(USPipelineInterface
     interface.cpp
     UltrasoundMetadata.cpp
     PatientMetadata.cpp
-    UltrasoundPlugin.h
+    UltrasoundController.h
     UltrasoundImagePipeline.h
     FrameSource.cpp
     Frame.cpp

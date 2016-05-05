@@ -3,7 +3,7 @@
 
 #include <janus/plugin.h>
 #include "plugin_hooks.h"
-#include <USPipelineInterface/UltrasoundPlugin.h>
+#include <USPipelineInterface/UltrasoundController.h>
 
 #include <USPipelineInterface/interface.h>
 #include <USPipelineInterface/PatientMetadata.h>

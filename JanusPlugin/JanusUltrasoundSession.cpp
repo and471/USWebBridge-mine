@@ -3,7 +3,7 @@
 #include <cstdio>
 #include <functional>
 #include <jansson.h>
-#include <USPipelineInterface/UltrasoundPlugin.h>
+#include <USPipelineInterface/UltrasoundController.h>
 
 #include "JanusUltrasoundSession.h"
 

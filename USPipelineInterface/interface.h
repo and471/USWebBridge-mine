@@ -1,7 +1,7 @@
 #ifndef USPIPELINEINTERFACE_H
 #define USPIPELINEINTERFACE_H
 
-#include "UltrasoundPlugin.h"
+#include "UltrasoundController.h"
 #include "FrameSource.h"
 #include "UltrasoundImagePipeline.h"
 

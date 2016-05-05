@@ -1,7 +1,7 @@
 #ifndef ULTRASOUNDIMAGEPIPELINE_H
 #define ULTRASOUNDIMAGEPIPELINE_H
 
-#include "UltrasoundPlugin.h"
+#include "UltrasoundController.h"
 #include "PatientMetadata.h"
 #include "FrameSource.h"
 #include <functional>
