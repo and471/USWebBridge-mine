@@ -1,6 +1,18 @@
 #ifndef PLUGIN_HOOKS_H
 #define PLUGIN_HOOKS_H
 
+extern "C" {
+#include <janus/debug.h>
+#include <janus/apierror.h>
+#include <janus/config.h>
+#include <janus/mutex.h>
+#include <janus/rtp.h>
+#include <janus/rtcp.h>
+#include <janus/record.h>
+#include <janus/utils.h>
+#include <janus/plugin.h>
+}
+
 /* Plugin information */
 #define JANUS_ULTRASOUND_VERSION			5
 #define JANUS_ULTRASOUND_VERSION_STRING	"0.0.5"

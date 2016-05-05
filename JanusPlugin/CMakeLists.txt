@@ -44,7 +44,7 @@ set (SRCS
     janus_ultrasound.cpp
     JanusUltrasoundPlugin.cpp
     JanusUltrasoundSession.cpp
-    plugin_hooks.h
+    plugin_hooks.cpp
 )
 
 ADD_LIBRARY(janus_ultrasound SHARED
