@@ -1,25 +1,8 @@
 #ifndef DNLFRAMEEXCHANGE_H
 #define DNLFRAMEEXCHANGE_H
 
+#include <USPipelineInterface/Frame.h>
 #include <mutex>
-#include <Modules/USStreamingCommon/DNLImage.h>
-
-
-class Frame {
-
-public:
-    Frame(char* data, size_t size);
-    ~Frame();
-
-    static Frame* copy(Frame* frame);
-    char* getData();
-    size_t getSize();
-
-private:
-    char* data;
-    size_t size;
-};
-
 
 class FrameExchange
 {

@@ -25,6 +25,7 @@ set(LIBS ${LIBS} ${GLIB_LIBRARIES})
 set (SRCS
     janus_ultrasound.cpp
     JanusUltrasoundPlugin.cpp
+    JanusUltrasoundSession.cpp
     plugin_hooks.h
 )
 

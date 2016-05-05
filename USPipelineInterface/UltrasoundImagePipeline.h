@@ -3,9 +3,10 @@
 
 #include "UltrasoundPlugin.h"
 #include "PatientMetadata.h"
+#include "FrameSource.h"
 #include <functional>
 
-class UltrasoundPlugin; // forward declaration
+class UltrasoundController; // forward declaration
 
 class UltrasoundImagePipeline
 {
@@ -18,8 +19,13 @@ public:
     virtual void setOnNewPatientMetadataCallback(std::function<void(PatientMetadata)> cb) =0;
     virtual void onNewPatientMetadata(PatientMetadata patient) =0;
 
+    virtual void setFrameSource(FrameSource* frame_source) =0;
+
+    virtual int getPort() =0;
+
 protected:
-    UltrasoundPlugin* plugin;
+    UltrasoundController* controller;
+    FrameSource* frame_source;
     int fps = 20;
 
     std::function<void(PatientMetadata)> onNewPatientMetadataCallback;

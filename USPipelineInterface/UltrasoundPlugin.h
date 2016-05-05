@@ -7,10 +7,11 @@
 
 class USPipelineInterface; // forward declaration
 
-class UltrasoundPlugin
+class UltrasoundController
 {
 public:
     virtual void start() =0;
+    virtual void stop()=0;
 
     virtual void onNewPatientMetadata(PatientMetadata patient) =0;
     virtual void onNSlicesChanged(int nSlices) =0;

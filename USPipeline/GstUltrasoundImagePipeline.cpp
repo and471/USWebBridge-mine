@@ -3,34 +3,47 @@
 #include <gstreamermm/buffer.h>
 
 #include "GstUltrasoundImagePipeline.h"
-#include "DNLImageSource.h"
-#include "DNLImageExtractor.h"
 #include "FrameExchange.h"
+#include <USPipelineInterface/FrameSource.h>
 #include <Modules/USStreamingCommon/DNLImage.h>
 #include <glib.h>
 #include <functional>
 
-GstUltrasoundImagePipeline::GstUltrasoundImagePipeline(UltrasoundPlugin* plugin) {
-    this->plugin = plugin;
+static bool initialised = false;
+static int portCounter = 0;
+
+GstUltrasoundImagePipeline::GstUltrasoundImagePipeline(UltrasoundController* controller) {
+    if (!initialised) initGst();
+
+    this->controller = controller;
 
     thread = nullptr;
     exchange = new FrameExchange();
-    extractor = new DNLImageExtractor();
-    extractor->setOnNSlicesChangedCallback(
-        std::bind(&GstUltrasoundImagePipeline::onNSlicesChanged, this, std::placeholders::_1)
-    );
 
-    plugin->setOnSetSliceCallback(
+    controller->setOnSetSliceCallback(
         std::bind(&GstUltrasoundImagePipeline::onSetSlice, this, std::placeholders::_1)
     );
 
+    port = getFreePort();
     createGstPipeline();
 }
 
+void GstUltrasoundImagePipeline::initGst() {
+    initialised = true;
+
+    int z = 0;
+    int &argc = z;
+
+    char** h = NULL;
+    char** &argv = h;
+
+    Gst::init(argc, argv);
+}
+
 GstUltrasoundImagePipeline::~GstUltrasoundImagePipeline() {
+    frame_source->removeOnFrameCallback(onImageCallbackID);
+    frame_source->removeOnNSlicesChangedCallback(onNSlicesChangedCallbackID);
     delete exchange;
-    delete extractor;
-    //gst_object_unref(pipeline); // frees pipeline and all elements
 }
 
 void GstUltrasoundImagePipeline::createGstPipeline() {
@@ -60,22 +73,31 @@ void GstUltrasoundImagePipeline::createGstPipeline() {
 
     //gst_preset_load_preset(GST_PRESET(videoenc), "Profile Realtime");
     udpsink->property<Glib::ustring>("host", "127.0.0.1");
-    udpsink->property("port", 5004);
+    udpsink->property("port", port);
 
     // Callbacks
     appsrc->signal_need_data().connect(sigc::mem_fun(*this, &GstUltrasoundImagePipeline::onAppSrcNeedData));
-    appsrc->signal_enough_data().connect(sigc::mem_fun(*this, &GstUltrasoundImagePipeline::onEnough));
-
 
     // Pack
     pipeline->add(appsrc)->add(pngdec)->add(conv)->add(videoenc)->add(payloader)->add(udpsink);
     appsrc->link(pngdec)->link(conv)->link(videoenc)->link(payloader)->link(udpsink);
 }
 
-void GstUltrasoundImagePipeline::setDNLImageSource(DNLImageSource* dnl) {
-    dnl_image_source = dnl;
-    dnl_image_source->setOnImageCallback(
-        std::bind(&GstUltrasoundImagePipeline::onImage, this, std::placeholders::_1)
+int GstUltrasoundImagePipeline::getFreePort() {
+    return 5004 + (portCounter++);
+}
+
+int GstUltrasoundImagePipeline::getPort() {
+    return port;
+}
+
+void GstUltrasoundImagePipeline::setFrameSource(FrameSource* frame_source) {
+    this->frame_source = frame_source;
+    onImageCallbackID = frame_source->addOnFrameCallback(
+        std::bind(&GstUltrasoundImagePipeline::onFrame, this, std::placeholders::_1)
+    );
+    onNSlicesChangedCallbackID = frame_source->addOnNSlicesChangedCallback(
+        std::bind(&GstUltrasoundImagePipeline::onNSlicesChanged, this, std::placeholders::_1)
     );
 }
 
@@ -83,7 +105,7 @@ void GstUltrasoundImagePipeline::start() {
     if (thread != nullptr) {
         fprintf(stderr, "Cannot start new thread: thread is already running\n");
     }
-    dnl_image_source->start();
+    frame_source->start();
     pipeline->set_state(Gst::STATE_PLAYING);
 
     running = true;
@@ -103,7 +125,7 @@ void GstUltrasoundImagePipeline::stop() {
     delete thread;
 
     pipeline->set_state(Gst::STATE_NULL);
-    dnl_image_source->stop();
+    frame_source->stop();
 }
 
 void GstUltrasoundImagePipeline::onAppSrcNeedData(guint _) {
@@ -130,33 +152,23 @@ void GstUltrasoundImagePipeline::onAppSrcNeedData(guint _) {
     delete frame;
 }
 
-void GstUltrasoundImagePipeline::onImage(DNLImage::Pointer image) {
-
-    char* data;
-    size_t size;
-    int slices;
-    extractor->getPNG(image, &data, &size);
-
-    Frame* frame = new Frame(data, size);
-    free(data);
-
+void GstUltrasoundImagePipeline::onFrame(Frame* frame) {
     exchange->add_frame(frame);
-    delete frame;
 
     // If patient metadata changes, send new metadata
-    PatientMetadata patient = extractor->getPatientMetadata(image);
+    PatientMetadata patient = frame->getPatientMetadata();
     if (!(patient == this->patient)) {
         this->patient = patient;
-        this->plugin->onNewPatientMetadata(patient);
+        this->controller->onNewPatientMetadata(patient);
     }
 }
 
 void GstUltrasoundImagePipeline::onNSlicesChanged(int nSlices) {
-    this->plugin->onNSlicesChanged(nSlices);
+    controller->onNSlicesChanged(nSlices);
 }
 
 void GstUltrasoundImagePipeline::onSetSlice(int slice) {
-    this->extractor->setSlice(slice);
+    frame_source->setSlice(slice);
 }
 
 int GstUltrasoundImagePipeline::getFPS() {
@@ -169,9 +181,5 @@ void GstUltrasoundImagePipeline::setOnNewPatientMetadataCallback(std::function<v
 
 void GstUltrasoundImagePipeline::onNewPatientMetadata(PatientMetadata patient) {
     this->onNewPatientMetadataCallback(patient);
-}
-
-void GstUltrasoundImagePipeline::onEnough() {
-    printf("ENOUUUGH!!!");
 }
 

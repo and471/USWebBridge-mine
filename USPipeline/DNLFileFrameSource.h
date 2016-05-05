@@ -1,5 +1,5 @@
-#ifndef DNLFILEIMAGESOURCE_H_
-#define DNLFILEIMAGESOURCE_H_
+#ifndef DNLFILEFRAMESOURCE_H_
+#define DNLFILEFRAMESOURCE_H_
 
 #include <string>
 #include <vector>
@@ -9,15 +9,15 @@
 #include <atomic>
 #include <boost/signals2.hpp>
 #include <Modules/USStreamingCommon/DNLImage.h>
-#include "DNLImageSource.h"
+#include "DNLFrameSource.h"
 
-class DNLFileImageSource : public DNLImageSource {
+class DNLFileFrameSource : public DNLFrameSource {
 public:
 
     typedef boost::filesystem::path PathType;
 
-    DNLFileImageSource(std::string &folder);
-    ~DNLFileImageSource();
+    DNLFileFrameSource(std::string &folder);
+    ~DNLFileFrameSource();
 
     void start();
     void stop();
@@ -66,4 +66,4 @@ private:
 
 
 
-#endif /// DNLFILEIMAGESOURCE_H_
+#endif /// DNLFILEFRAMESOURCE_H_

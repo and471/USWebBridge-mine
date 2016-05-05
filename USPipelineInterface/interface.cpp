@@ -1,28 +1,26 @@
 #include <cstdio>
 #include <functional>
 #include <USPipeline/GstUltrasoundImagePipeline.h>
-#include <USPipeline/DNLImageSource.h>
-#include <USPipeline/DNLFileImageSource.h>
+#include "FrameSource.h"
+#include <USPipeline/DNLFileFrameSource.h>
 #include "UltrasoundPlugin.h"
 #include <gstreamermm.h>
 
 #include "PatientMetadata.h"
 #include "interface.h"
 
-UltrasoundImagePipeline* initGstUltrasoundImagePipelineJanusPlugin(UltrasoundPlugin* plugin) {
-    int z = 0;
-    int &argc = z;
+static FrameSource* frameSource = nullptr;
 
-    char** h = NULL;
-    char** &argv = h;
+FrameSource* getFrameSource() {
+    if (frameSource == nullptr) {
+        std::string folder = "/home/andrew/Project/forAndrew3D";
+        frameSource = new DNLFileFrameSource(folder);
+    }
 
-    Gst::init(argc, argv);
+    return frameSource;
+}
 
-    std::string folder = "/home/andrew/Project/forAndrew3D";
-
-    DNLImageSource* dnl_image_source = new DNLFileImageSource(folder);
-    GstUltrasoundImagePipeline* pipeline = new GstUltrasoundImagePipeline(plugin);
-    pipeline->setDNLImageSource(dnl_image_source);
-
+UltrasoundImagePipeline* createPipeline(UltrasoundController* controller) {
+    GstUltrasoundImagePipeline* pipeline = new GstUltrasoundImagePipeline(controller);
     return pipeline;
 }

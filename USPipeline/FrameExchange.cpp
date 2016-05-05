@@ -1,5 +1,5 @@
 #include "FrameExchange.h"
-#include <Modules/USStreamingCommon/DNLImage.h>
+#include <USPipelineInterface/Frame.h>
 #include <thread>
 
 void FrameExchange::add_frame(Frame* frame) {
@@ -24,27 +24,4 @@ Frame* FrameExchange::get_frame() {
 
 FrameExchange::~FrameExchange() {
     delete frame;
-}
-
-Frame::Frame(char* data, size_t size) {
-    this->size = size;
-    this->data = (char*) malloc(size);
-    memcpy(this->data, data, size);
-}
-
-Frame::~Frame() {
-    free(this->data);
-}
-
-Frame* Frame::copy(Frame* frame) {
-    Frame* new_frame = new Frame(frame->data, frame->size);
-    return new_frame;
-}
-
-char* Frame::getData() {
-    return data;
-}
-
-size_t Frame::getSize() {
-    return size;
 }

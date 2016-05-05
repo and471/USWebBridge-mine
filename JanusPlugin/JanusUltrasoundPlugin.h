@@ -2,44 +2,28 @@
 #define JANUS_ULTRASOUNDPLUGIN_H
 
 #include <janus/plugin.h>
-#include "plugin_hooks.h"
-#include <USPipelineInterface/UltrasoundPlugin.h>
-
 #include <USPipelineInterface/interface.h>
-#include <USPipelineInterface/PatientMetadata.h>
-#include <functional>
-#include <jansson.h>
+#include <USPipelineInterface/FrameSource.h>
 
-static const std::string METHOD_NEW_PATIENT_METADATA = "NEW_PATIENT_METADATA";
-static const std::string METHOD_N_SLICES_CHANGED = "N_SLICES_CHANGED";
+#include "plugin_hooks.h"
+#include "JanusUltrasoundSession.h"
 
-class JanusUltrasoundPlugin : public UltrasoundPlugin
+
+class JanusUltrasoundPlugin
 {
 public:
-    JanusUltrasoundPlugin(janus_callbacks* gateway, janus_plugin_session* handle);
+    JanusUltrasoundPlugin(janus_callbacks* gateway);
     ~JanusUltrasoundPlugin();
 
-    void setPipeline(UltrasoundImagePipeline* pipeline);
-
-    void sendMethod(json_t* data, std::string method);
-    void sendData(json_t* obj);
-    void onDataReceived(char* data);
-
-    // Virtual methods
-    void start();
-    void onNewPatientMetadata(PatientMetadata patient);
-    void onNSlicesChanged(int nSlices);
-    void onSetSlice(int slice);
-    void setOnSetSliceCallback(std::function<void(int)> cb);
+    void newSession(janus_plugin_session* handle);
+    void destroySession(janus_plugin_session* handle);
+    void onSessionReady(janus_plugin_session* handle);
+    void onDataReceived(janus_plugin_session* handle, char* msg);
 
 private:
-    USPipelineInterface* interface;
+    FrameSource* frame_source;
     janus_callbacks* gateway;
-    janus_plugin_session* handle;
-    bool started = false;
-
-    std::function<void(int)> onSetSliceCallback;
-
+    std::map<janus_plugin_session*, JanusUltrasoundSession*> sessions;
 };
 
 #endif // JANUS_ULTRASOUNDPLUGIN_H

@@ -2,8 +2,8 @@
 #include <gstreamermm.h>
 #include <string>
 
-#include <USPipeline/DNLImageSource.h>
-#include <USPipeline/DNLFileImageSource.h>
+#include <USPipelineInterface/FrameSource.h>
+#include <USPipeline/DNLFileFrameSource.h>
 #include <USPipeline/GstUltrasoundImagePipeline.h>
 
 int main(int argc, char *argv[]) {
@@ -19,9 +19,9 @@ int main(int argc, char *argv[]) {
     Gst::init(argc, argv);
     std::string folder = argv[1];
 
-    DNLImageSource* dnl_image_source = new DNLFileImageSource(folder);
+    FrameSource* frame_source = new DNLFileFrameSource(folder);
     GstUltrasoundImagePipeline *pipeline = new GstUltrasoundImagePipeline(NULL);
-    pipeline->setDNLImageSource(dnl_image_source);
+    pipeline->setFrameSource(frame_source);
 
     pipeline->start();
 
@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
     pipeline->stop();
 
     delete pipeline;
-    delete dnl_image_source;
+    delete frame_source;
 
     return 0;
 }

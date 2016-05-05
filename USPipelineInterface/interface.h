@@ -2,11 +2,13 @@
 #define USPIPELINEINTERFACE_H
 
 #include "UltrasoundPlugin.h"
+#include "FrameSource.h"
 #include "UltrasoundImagePipeline.h"
 
-class UltrasoundPlugin;
+class UltrasoundController;
 class UltrasoundImagePipeline; // forward declare to avoid cyclic dependency
 
-UltrasoundImagePipeline* initGstUltrasoundImagePipelineJanusPlugin(UltrasoundPlugin* plugin);
+FrameSource* getFrameSource();
+UltrasoundImagePipeline* createPipeline(UltrasoundController* controller);
 
 #endif // USPIPELINEINTERFACE_H

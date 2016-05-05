@@ -1,4 +1,4 @@
-#include "DNLFileImageSource.h"
+#include "DNLFileFrameSource.h"
 #include <map>
 #include <ctime>
 #include <cstdlib>
@@ -6,7 +6,7 @@
 #include <boost/date_time/posix_time/ptime.hpp>
 #include <Modules/USStreamingCommon/DNLImageReader.h>
 
-DNLFileImageSource::DNLFileImageSource(std::string &folder) {
+DNLFileFrameSource::DNLFileFrameSource(std::string &folder) {
     this->stop_image_generation = false;
     this->thread = nullptr;
 
@@ -15,15 +15,18 @@ DNLFileImageSource::DNLFileImageSource(std::string &folder) {
     get_mhd_files(root);
 }
 
-DNLFileImageSource::~DNLFileImageSource() {
+DNLFileFrameSource::~DNLFileFrameSource() {
     filenames.clear();
 }
 
-void DNLFileImageSource::start() {
-    this->thread = new std::thread(&DNLFileImageSource::GenerateImagesThread, this);
+void DNLFileFrameSource::start() {
+    // Only ever start one thread
+    if (this->thread != nullptr) return;
+
+    this->thread = new std::thread(&DNLFileFrameSource::GenerateImagesThread, this);
 }
 
-void DNLFileImageSource::GenerateImagesThread() {
+void DNLFileFrameSource::GenerateImagesThread() {
     // Generate images from each file, and when all are exhausted, start again
     while(true) {
         for (PathType filename : filenames) {
@@ -52,7 +55,7 @@ void DNLFileImageSource::GenerateImagesThread() {
     }
 }
 
-void DNLFileImageSource::stop() {
+void DNLFileFrameSource::stop() {
     this->stop_image_generation = true;
     if (this->thread->joinable()){
         this->thread->join();
@@ -65,7 +68,7 @@ void DNLFileImageSource::stop() {
  * Return the filenames of all files that have the specified extension
  * in the specified directory and all subdirectories
  */
-void DNLFileImageSource::get_mhd_files(PathType root)
+void DNLFileFrameSource::get_mhd_files(PathType root)
 {
     if(!boost::filesystem::exists(root) || !boost::filesystem::is_directory(root)) {
         fprintf(stderr, "No such directory\n");

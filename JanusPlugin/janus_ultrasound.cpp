@@ -552,7 +552,11 @@ int janus_ultrasound_init(janus_callbacks *callback, const char *config_path) {
         janus_config_destroy(config);
         return -1;
     }
+
+    us_plugin = new JanusUltrasoundPlugin(gateway);
+
     JANUS_LOG(LOG_INFO, "%s initialized!\n", JANUS_ULTRASOUND_NAME);
+
     return 0;
 }
 
@@ -602,6 +606,9 @@ void janus_ultrasound_destroy(void) {
 
 	g_atomic_int_set(&initialized, 0);
 	g_atomic_int_set(&stopping, 0);
+
+    delete us_plugin;
+
 	JANUS_LOG(LOG_INFO, "%s destroyed!\n", JANUS_ULTRASOUND_NAME);
 }
 
@@ -657,18 +664,20 @@ void janus_ultrasound_create_session(janus_plugin_session *handle, int *error) {
 	g_hash_table_insert(sessions, handle, session);
     janus_mutex_unlock(&sessions_mutex);
 
-    us_plugin = new JanusUltrasoundPlugin(gateway, handle);
-    UltrasoundImagePipeline* pipeline = initGstUltrasoundImagePipelineJanusPlugin(us_plugin);
-    us_plugin->setPipeline(pipeline);
+    us_plugin->newSession(handle);
 
 	return;
 }
 
 void janus_ultrasound_destroy_session(janus_plugin_session *handle, int *error) {
+
 	if(g_atomic_int_get(&stopping) || !g_atomic_int_get(&initialized)) {
 		*error = -1;
 		return;
 	}	
+
+    us_plugin->destroySession(handle);
+
 	janus_ultrasound_session *session = (janus_ultrasound_session *)handle->plugin_handle; 
 	if(!session) {
 		JANUS_LOG(LOG_ERR, "No session associated with this handle...\n");
@@ -689,8 +698,6 @@ void janus_ultrasound_destroy_session(janus_plugin_session *handle, int *error) 
 		old_sessions = g_list_append(old_sessions, session);
 	}
 	janus_mutex_unlock(&sessions_mutex);
-
-    delete us_plugin;
 
 	return;
 }
@@ -1595,7 +1602,7 @@ struct janus_plugin_result *janus_ultrasound_handle_message(janus_plugin_session
 
 		return janus_plugin_result_new(JANUS_PLUGIN_OK_WAIT, NULL);
     } else if(!strcasecmp(request_text, "ready")) {
-        us_plugin->start();
+        us_plugin->onSessionReady(handle);
     } else {
 		JANUS_LOG(LOG_VERB, "Unknown request '%s'\n", request_text);
 		error_code = JANUS_ULTRASOUND_ERROR_INVALID_REQUEST;
@@ -2834,7 +2841,7 @@ void janus_ultrasound_incoming_data(janus_plugin_session *handle, char *buf, int
 		*(text+len) = '\0';
 		JANUS_LOG(LOG_VERB, "Got a DataChannel message (%zu bytes) to bounce back: %s\n", strlen(text), text);
 
-        us_plugin->onDataReceived(text);
+        us_plugin->onDataReceived(handle, text);
 
         g_free(text);
 	}
