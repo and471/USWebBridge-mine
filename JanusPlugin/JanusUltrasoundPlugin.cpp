@@ -12,6 +12,10 @@ JanusUltrasoundPlugin::JanusUltrasoundPlugin(janus_callbacks* gateway)
     frame_source = createFrameSource();
 }
 
+JanusUltrasoundPlugin::~JanusUltrasoundPlugin() {
+    delete frame_source;
+}
+
 void JanusUltrasoundPlugin::newSession(janus_plugin_session* handle) {
     JanusUltrasoundSession* session = new JanusUltrasoundSession(gateway, handle);
     UltrasoundImagePipeline* pipeline = createPipeline(session);
@@ -24,6 +28,7 @@ void JanusUltrasoundPlugin::destroySession(janus_plugin_session* handle) {
     sessions[handle]->stop();
     delete sessions[handle];
     sessions.erase(handle);
+    int p = 0;
 }
 
 void JanusUltrasoundPlugin::onSessionReady(janus_plugin_session* handle) {

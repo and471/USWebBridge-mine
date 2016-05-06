@@ -3,6 +3,14 @@
 
 #include <jansson.h>
 
+typedef struct janus_ultrasound_codecs {
+    gint video_codec;
+    gint video_pt;
+    char *video_rtpmap;
+    char *video_fmtp;
+} janus_ultrasound_codecs;
+
+
 class Plugin {
 
 public:

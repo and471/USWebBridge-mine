@@ -23,6 +23,7 @@ extern "C" {
 
 #include "plugin_hooks.h"
 #include "janus_ultrasound.h"
+#include "RTPSource.h"
 
 #include <USPipelineInterface/UltrasoundImagePipeline.h>
 #include "JanusUltrasoundPlugin.h"
@@ -40,36 +41,16 @@ static JanusUltrasoundPlugin* us_plugin;
 static volatile gint initialized = 0, stopping = 0;
 static janus_callbacks *gateway = NULL;
 static GThread *handler_thread;
-static GThread *watchdog;
 static void *janus_ultrasound_handler(void *data);
-static void *janus_ultrasound_ondemand_thread(void *data);
-static void *janus_ultrasound_filesource_thread(void *data);
 static void janus_ultrasound_relay_rtp_packet(gpointer data, gpointer user_data);
 static void *janus_ultrasound_relay_thread(void *data);
 
-typedef struct janus_ultrasound_rtp_keyframe {
-    gboolean enabled;
-    /* If enabled, we store the packets of the last keyframe, to immediately send them for new viewers */
-    GList *latest_keyframe;
-    /* This is where we store packets while we're still collecting the whole keyframe */
-    GList *temp_keyframe;
-    guint32 temp_ts;
-    janus_mutex mutex;
-} janus_ultrasound_rtp_keyframe;
-
 #define JANUS_ULTRASOUND_VP8		0
 
-typedef struct janus_ultrasound_codecs {
-    gint video_codec;
-    gint video_pt;
-    char *video_rtpmap;
-    char *video_fmtp;
-} janus_ultrasound_codecs;
 
 typedef struct janus_ultrasound_mountpoint {
     gint64 id;
     char *name;
-    char *description;
     gboolean is_private;
     char *secret;
     char *pin;
@@ -87,7 +68,6 @@ typedef struct janus_ultrasound_mountpoint {
     in_addr_t video_mcast;
     int video_fd;
     gint64 last_received_video;
-    janus_ultrasound_rtp_keyframe keyframe;
 
 
 } janus_ultrasound_mountpoint;
@@ -96,14 +76,14 @@ static GList *old_mountpoints;
 janus_mutex mountpoints_mutex;
 
 
-//TODO move
-char* createSDP(janus_ultrasound_mountpoint* mp);
 
-static void janus_ultrasound_mountpoint_free(janus_ultrasound_mountpoint *mp);
+char* createSDP(RTPSource* mp);
+
+static void janus_ultrasound_mountpoint_free(RTPSource* mp);
 
 /* Helper to create an RTP live source (e.g., from gstreamer/ffmpeg/vlc/etc.) */
-janus_ultrasound_mountpoint *janus_ultrasound_create_rtp_source(
-        uint64_t id, char *name, uint16_t vport, uint8_t vcodec, char *vrtpmap);
+RTPSource* janus_ultrasound_create_rtp_source(uint64_t id, char *name, uint16_t vport,
+                                              uint8_t vcodec, char *vrtpmap);
 
 typedef struct janus_ultrasound_message {
     janus_plugin_session *handle;
@@ -143,9 +123,8 @@ typedef struct janus_ultrasound_context {
 
 typedef struct janus_ultrasound_session {
     janus_plugin_session *handle;
-    janus_ultrasound_mountpoint *mountpoint;
+    RTPSource* mountpoint;
     gboolean started;
-    gboolean paused;
     janus_ultrasound_context context;
     gboolean stopping;
     volatile gint hangingup;
@@ -158,9 +137,7 @@ static janus_mutex sessions_mutex;
 /* Packets we get from gstreamer and relay */
 typedef struct janus_ultrasound_rtp_relay_packet {
 	rtp_header *data;
-	gint length;
-	gint is_video;
-	gint is_keyframe;
+    gint length;
 	uint32_t timestamp;
 	uint16_t seq_number;
 } janus_ultrasound_rtp_relay_packet;
@@ -179,69 +156,6 @@ typedef struct janus_ultrasound_rtp_relay_packet {
 #define JANUS_ULTRASOUND_ERROR_UNKNOWN_ERROR		470
 
 
-/* Streaming watchdog/garbage collector (sort of) */
-void *janus_ultrasound_watchdog(void *data);
-void *janus_ultrasound_watchdog(void *data) {
-	JANUS_LOG(LOG_INFO, "Streaming watchdog started\n");
-	gint64 now = 0;
-	while(g_atomic_int_get(&initialized) && !g_atomic_int_get(&stopping)) {
-		janus_mutex_lock(&sessions_mutex);
-		/* Iterate on all the sessions */
-		now = janus_get_monotonic_time();
-		if(old_sessions != NULL) {
-			GList *sl = old_sessions;
-			JANUS_LOG(LOG_HUGE, "Checking %d old Streaming sessions...\n", g_list_length(old_sessions));
-			while(sl) {
-				janus_ultrasound_session *session = (janus_ultrasound_session *)sl->data;
-				if(!session) {
-					sl = sl->next;
-					continue;
-				}
-				if(now-session->destroyed >= 5*G_USEC_PER_SEC) {
-					/* We're lazy and actually get rid of the stuff only after a few seconds */
-					JANUS_LOG(LOG_VERB, "Freeing old Streaming session\n");
-					GList *rm = sl->next;
-					old_sessions = g_list_delete_link(old_sessions, sl);
-					sl = rm;
-					session->handle = NULL;
-					g_free(session);
-					session = NULL;
-					continue;
-				}
-				sl = sl->next;
-			}
-		}
-		janus_mutex_unlock(&sessions_mutex);
-		janus_mutex_lock(&mountpoints_mutex);
-		/* Iterate on all the mountpoints */
-		if(old_mountpoints != NULL) {
-			GList *sl = old_mountpoints;
-			JANUS_LOG(LOG_HUGE, "Checking %d old Streaming mountpoints...\n", g_list_length(old_mountpoints));
-			while(sl) {
-				janus_ultrasound_mountpoint *mountpoint = (janus_ultrasound_mountpoint *)sl->data;
-				if(!mountpoint) {
-					sl = sl->next;
-					continue;
-				}
-				if(now-mountpoint->destroyed >= 5*G_USEC_PER_SEC) {
-					/* We're lazy and actually get rid of the stuff only after a few seconds */
-					JANUS_LOG(LOG_VERB, "Freeing old Streaming mountpoint\n");
-					GList *rm = sl->next;
-					old_mountpoints = g_list_delete_link(old_mountpoints, sl);
-					sl = rm;
-					janus_ultrasound_mountpoint_free(mountpoint);
-					mountpoint = NULL;
-					continue;
-				}
-				sl = sl->next;
-			}
-		}
-		janus_mutex_unlock(&mountpoints_mutex);
-		g_usleep(500000);
-	}
-	JANUS_LOG(LOG_INFO, "Streaming watchdog stopped\n");
-	return NULL;
-}
 
 
 /* Plugin implementation */
@@ -267,13 +181,6 @@ int janus_ultrasound_init(janus_callbacks *callback, const char *config_path) {
 
 
     GError *error = NULL;
-    /* Start the sessions watchdog */
-    watchdog = g_thread_try_new("ultrasound watchdog", &janus_ultrasound_watchdog, NULL, &error);
-    if(!watchdog) {
-        g_atomic_int_set(&initialized, 0);
-        JANUS_LOG(LOG_ERR, "Got error %d (%s) trying to launch the Streaming watchdog thread...\n", error->code, error->message ? error->message : "??");
-        return -1;
-    }
     /* Launch the thread that will handle incoming messages */
     handler_thread = g_thread_try_new("janus ultrasound handler", janus_ultrasound_handler, NULL, &error);
     if(error != NULL) {
@@ -307,17 +214,10 @@ void janus_ultrasound_destroy(void) {
 	gpointer value;
 	g_hash_table_iter_init(&iter, mountpoints);
 	while (g_hash_table_iter_next(&iter, NULL, &value)) {
-		janus_ultrasound_mountpoint *mp = value;
-		if(!mp->destroyed) {
-			mp->destroyed = janus_get_monotonic_time();
-			old_mountpoints = g_list_append(old_mountpoints, mp);
-		}
+        RTPSource* mp = value;
+        janus_ultrasound_mountpoint_free(mp);
 	}
 	janus_mutex_unlock(&mountpoints_mutex);
-	if(watchdog != NULL) {
-		g_thread_join(watchdog);
-		watchdog = NULL;
-	}
 
 	/* FIXME We should destroy the sessions cleanly */
 	usleep(500000);
@@ -354,8 +254,7 @@ void janus_ultrasound_create_session(janus_plugin_session *handle, int *error) {
 	}
 	session->handle = handle;
 	session->mountpoint = NULL;	/* This will happen later */
-	session->started = FALSE;	/* This will happen later */
-	session->paused = FALSE;
+    session->started = FALSE;	/* This will happen later */
 	session->destroyed = 0;
 	g_atomic_int_set(&session->hangingup, 0);
 	handle->plugin_handle = session;
@@ -385,16 +284,21 @@ void janus_ultrasound_destroy_session(janus_plugin_session *handle, int *error) 
 	}
 	JANUS_LOG(LOG_VERB, "Removing ultrasound session...\n");
 	if(session->mountpoint) {
+
+        printf("REMOVING MOUNTPOINT\n");
 		janus_mutex_lock(&session->mountpoint->mutex);
-		session->mountpoint->listeners = g_list_remove_all(session->mountpoint->listeners, session);
-		janus_mutex_unlock(&session->mountpoint->mutex);
+        session->mountpoint->listeners = g_list_remove_all(session->mountpoint->listeners, session);
+        janus_mutex_unlock(&session->mountpoint->mutex);
+
+        janus_ultrasound_mountpoint_free(session->mountpoint);
 	}
 	janus_mutex_lock(&sessions_mutex);
 	if(!session->destroyed) {
-		session->destroyed = janus_get_monotonic_time();
+
+        printf("Freeing old Streaming session\n");
+        session->handle = NULL;
+        g_free(session);
 		g_hash_table_remove(sessions, handle);
-		/* Cleaning up and removing the session is done in a lazy way */
-		old_sessions = g_list_append(old_sessions, session);
 	}
 	janus_mutex_unlock(&sessions_mutex);
 
@@ -484,9 +388,9 @@ struct janus_plugin_result *janus_ultrasound_handle_message(janus_plugin_session
 	}
 	/* Some requests ('create' and 'destroy') can be handled synchronously */
 	const char *request_text = json_string_value(request);
-    if(!strcasecmp(request_text, "watch") || !strcasecmp(request_text, "start")
-			|| !strcasecmp(request_text, "pause") || !strcasecmp(request_text, "stop")
-			|| !strcasecmp(request_text, "switch")) {
+    if(!strcasecmp(request_text, "watch") || !strcasecmp(request_text, "start") ||
+       !strcasecmp(request_text, "stop"))
+    {
         /* These messages are handled asynchronously in janus_ultrasound_handler */
 		janus_ultrasound_message *msg = g_malloc0(sizeof(janus_ultrasound_message));
 		if(msg == NULL) {
@@ -580,21 +484,7 @@ void janus_ultrasound_setup_media(janus_plugin_session *handle) {
 	session->context.v_base_seq = 0;
 	session->context.v_base_seq_prev = 0;
 	/* If this is related to a live RTP mountpoint, any keyframe we can shoot already? */
-	janus_ultrasound_mountpoint *mountpoint = session->mountpoint;
-
-    if(mountpoint->keyframe.enabled) {
-        JANUS_LOG(LOG_HUGE, "Any keyframe to send?\n");
-        janus_mutex_lock(&mountpoint->keyframe.mutex);
-        if(mountpoint->keyframe.latest_keyframe != NULL) {
-            JANUS_LOG(LOG_HUGE, "Yep! %d packets\n", g_list_length(mountpoint->keyframe.latest_keyframe));
-            GList *temp = mountpoint->keyframe.latest_keyframe;
-            while(temp) {
-                janus_ultrasound_relay_rtp_packet(session, temp->data);
-                temp = temp->next;
-            }
-        }
-        janus_mutex_unlock(&mountpoint->keyframe.mutex);
-    }
+    RTPSource* mountpoint = session->mountpoint;
 
     session->started = TRUE;
     /* Prepare JSON event */
@@ -746,7 +636,7 @@ static void *janus_ultrasound_handler(void *data) {
             gboolean is_private = false;
 
 
-            janus_ultrasound_mountpoint *mp = janus_ultrasound_create_rtp_source(
+            RTPSource* mp = janus_ultrasound_create_rtp_source(
                 id,
                 desc,
                 vport,
@@ -754,35 +644,9 @@ static void *janus_ultrasound_handler(void *data) {
                 vrtpmap
             );
 
-            mp->is_private = is_private;
             mp->secret = g_strdup(secret);
-            mp->pin = NULL;
 
-			if(mp->pin) {
-				/* This mountpoint is protected by a PIN */
-				json_t *pin = json_object_get(root, "pin");
-				if(!pin) {
-					janus_mutex_unlock(&mountpoints_mutex);
-					JANUS_LOG(LOG_ERR, "Missing element (pin)\n");
-					error_code = JANUS_ULTRASOUND_ERROR_MISSING_ELEMENT;
-					g_snprintf(error_cause, 512, "Missing element (pin)");
-					goto error;
-				}
-				if(!json_is_string(pin)) {
-					janus_mutex_unlock(&mountpoints_mutex);
-					JANUS_LOG(LOG_ERR, "Invalid element (pin should be a string)\n");
-					error_code = JANUS_ULTRASOUND_ERROR_INVALID_ELEMENT;
-					g_snprintf(error_cause, 512, "Invalid element (pin should be a string)");
-					goto error;
-				}
-				if(!janus_strcmp_const_time(mp->pin, json_string_value(pin))) {
-					janus_mutex_unlock(&mountpoints_mutex);
-					JANUS_LOG(LOG_ERR, "Unauthorized (wrong pin)\n");
-					error_code = JANUS_ULTRASOUND_ERROR_UNAUTHORIZED;
-					g_snprintf(error_cause, 512, "Unauthorized (wrong pin)");
-					goto error;
-				}
-            }
+
 			JANUS_LOG(LOG_VERB, "Request to watch mountpoint/stream %"SCNu64"\n", id_value);
 			session->stopping = FALSE;
 			session->mountpoint = mp;
@@ -804,23 +668,11 @@ static void *janus_ultrasound_handler(void *data) {
 				g_snprintf(error_cause, 512, "Can't start: no mountpoint set");
 				goto error;
 			}
-			JANUS_LOG(LOG_VERB, "Starting the ultrasound\n");
-			session->paused = FALSE;
+            JANUS_LOG(LOG_VERB, "Starting the ultrasound\n");
 			result = json_object();
 			/* We wait for the setup_media event to start: on the other hand, it may have already arrived */
 			json_object_set_new(result, "status", json_string(session->started ? "started" : "starting"));
-		} else if(!strcasecmp(request_text, "pause")) {
-			if(session->mountpoint == NULL) {
-				JANUS_LOG(LOG_VERB, "Can't pause: no mountpoint set\n");
-				error_code = JANUS_ULTRASOUND_ERROR_NO_SUCH_MOUNTPOINT;
-				g_snprintf(error_cause, 512, "Can't start: no mountpoint set");
-				goto error;
-			}
-			JANUS_LOG(LOG_VERB, "Pausing the ultrasound\n");
-			session->paused = TRUE;
-			result = json_object();
-			json_object_set_new(result, "status", json_string("pausing"));
-		} else if(!strcasecmp(request_text, "stop")) {
+        } else if(!strcasecmp(request_text, "stop")) {
 			if(session->stopping || !session->started) {
 				/* Been there, done that: ignore */
 				janus_ultrasound_message_free(msg);
@@ -828,8 +680,7 @@ static void *janus_ultrasound_handler(void *data) {
 			}
 			JANUS_LOG(LOG_VERB, "Stopping the ultrasound\n");
 			session->stopping = TRUE;
-			session->started = FALSE;
-			session->paused = FALSE;
+            session->started = FALSE;
 			result = json_object();
 			json_object_set_new(result, "status", json_string("stopping"));
 			if(session->mountpoint) {
@@ -935,54 +786,16 @@ static int janus_ultrasound_create_fd(int port, in_addr_t mcast, const char* lis
 }
 
 
-static void janus_ultrasound_mountpoint_free(janus_ultrasound_mountpoint *mp) {
-	mp->destroyed = janus_get_monotonic_time();
-	
-	g_free(mp->name);
-	g_free(mp->description);
-	g_free(mp->secret);
-	g_free(mp->pin);
-	janus_mutex_lock(&mp->mutex);
-	g_list_free(mp->listeners);
-	janus_mutex_unlock(&mp->mutex);
-
-    if(mp->video_fd > 0) {
-        close(mp->video_fd);
-    }
-    janus_mutex_lock(&mp->keyframe.mutex);
-    GList *temp = NULL;
-    while(mp->keyframe.latest_keyframe) {
-        temp = g_list_first(mp->keyframe.latest_keyframe);
-        mp->keyframe.latest_keyframe = g_list_remove_link(mp->keyframe.latest_keyframe, temp);
-        janus_ultrasound_rtp_relay_packet *pkt = (janus_ultrasound_rtp_relay_packet *)temp->data;
-        g_free(pkt->data);
-        g_free(pkt);
-        g_list_free(temp);
-    }
-    mp->keyframe.latest_keyframe = NULL;
-    while(mp->keyframe.temp_keyframe) {
-        temp = g_list_first(mp->keyframe.temp_keyframe);
-        mp->keyframe.temp_keyframe = g_list_remove_link(mp->keyframe.temp_keyframe, temp);
-        janus_ultrasound_rtp_relay_packet *pkt = (janus_ultrasound_rtp_relay_packet *)temp->data;
-        g_free(pkt->data);
-        g_free(pkt);
-        g_list_free(temp);
-    }
-    mp->keyframe.latest_keyframe = NULL;
-    janus_mutex_unlock(&mp->keyframe.mutex);
-
-	g_free(mp->codecs.video_rtpmap);
-	g_free(mp->codecs.video_fmtp);
-
-	g_free(mp);
+static void janus_ultrasound_mountpoint_free(RTPSource* mp) {
+    delete mp;
 }
 
 
 /* Helper to create an RTP live source (e.g., from gstreamer/ffmpeg/vlc/etc.) */
-janus_ultrasound_mountpoint *janus_ultrasound_create_rtp_source(
-        uint64_t id, char *name, uint16_t vport, uint8_t vcodec, char *vrtpmap) {
+RTPSource* janus_ultrasound_create_rtp_source(uint64_t id, char *name, uint16_t vport,
+                                              uint8_t vcodec, char *vrtpmap)
+{
 	janus_mutex_lock(&mountpoints_mutex);
-
 
     int video_fd = janus_ultrasound_create_fd(vport, INADDR_ANY, "Video", "video", name);
     if(video_fd < 0) {
@@ -992,52 +805,37 @@ janus_ultrasound_mountpoint *janus_ultrasound_create_rtp_source(
     }
 
 	/* Create the mountpoint */
-	janus_ultrasound_mountpoint *live_rtp = g_malloc0(sizeof(janus_ultrasound_mountpoint));
-	if(live_rtp == NULL) {
-		JANUS_LOG(LOG_FATAL, "Memory error!\n");
-		janus_mutex_unlock(&mountpoints_mutex);
-		return NULL;
-	}
-	live_rtp->id = id;
-    live_rtp->name = g_strdup(name);
 
-	live_rtp->enabled = TRUE;
-    live_rtp->active = FALSE;
+    RTPSource* rtp_source = new RTPSource();
 
-    live_rtp->video_mcast = INADDR_ANY;
-    live_rtp->video_port = vport;
-    live_rtp->video_fd = video_fd;
-    live_rtp->last_received_video = janus_get_monotonic_time();
-    live_rtp->keyframe.enabled = false;
-    live_rtp->keyframe.latest_keyframe = NULL;
-    live_rtp->keyframe.temp_keyframe = NULL;
-    live_rtp->keyframe.temp_ts = 0;
-    janus_mutex_init(&live_rtp->keyframe.mutex);
-    live_rtp->codecs.video_codec = JANUS_ULTRASOUND_VP8;
-    live_rtp->codecs.video_pt = vcodec;
-    live_rtp->codecs.video_rtpmap = g_strdup(vrtpmap);
-    live_rtp->codecs.video_fmtp = NULL;
-	live_rtp->listeners = NULL;
-	live_rtp->destroyed = 0;
-	janus_mutex_init(&live_rtp->mutex);
-	g_hash_table_insert(mountpoints, GINT_TO_POINTER(live_rtp->id), live_rtp);
-	janus_mutex_unlock(&mountpoints_mutex);
-	GError *error = NULL;
-	g_thread_try_new(live_rtp->name, &janus_ultrasound_relay_thread, live_rtp, &error);
-	if(error != NULL) {
-		JANUS_LOG(LOG_ERR, "Got error %d (%s) trying to launch the RTP thread...\n", error->code, error->message ? error->message : "??");
-		if(live_rtp->name)
-			g_free(live_rtp->name);
-		g_free(live_rtp);
-		return NULL;
-	}
-	return live_rtp;
+    rtp_source->id = id;
+    rtp_source->name = g_strdup(name);
+
+    rtp_source->enabled = TRUE;
+    rtp_source->active = FALSE;
+
+    rtp_source->video_mcast = INADDR_ANY;
+    rtp_source->video_port = vport;
+    rtp_source->video_fd = video_fd;
+    rtp_source->last_received_video = janus_get_monotonic_time();
+    rtp_source->codecs.video_codec = JANUS_ULTRASOUND_VP8;
+    rtp_source->codecs.video_pt = vcodec;
+    rtp_source->codecs.video_rtpmap = g_strdup(vrtpmap);
+    rtp_source->codecs.video_fmtp = NULL;
+    rtp_source->listeners = NULL;
+    janus_mutex_init(&rtp_source->mutex);
+    g_hash_table_insert(mountpoints, GINT_TO_POINTER(rtp_source->id), rtp_source);
+    janus_mutex_unlock(&mountpoints_mutex);
+    GError *error = NULL;
+    g_thread_try_new(rtp_source->name, &janus_ultrasound_relay_thread, rtp_source, &error);
+
+    return rtp_source;
 }
 		
 /* FIXME Test thread to relay RTP frames coming from gstreamer/ffmpeg/others */
 static void *janus_ultrasound_relay_thread(void *data) {
 	JANUS_LOG(LOG_VERB, "Starting ultrasound relay thread\n");
-	janus_ultrasound_mountpoint *mountpoint = (janus_ultrasound_mountpoint *)data;
+    RTPSource* mountpoint = (RTPSource*) data;
 	if(!mountpoint) {
 		JANUS_LOG(LOG_ERR, "Invalid mountpoint!\n");
 		g_thread_unref(g_thread_self());
@@ -1059,7 +857,7 @@ static void *janus_ultrasound_relay_thread(void *data) {
 	/* Loop */
 	int num = 0;
 	janus_ultrasound_rtp_relay_packet packet;
-	while(!g_atomic_int_get(&stopping) && !mountpoint->destroyed) {
+    while(!g_atomic_int_get(&stopping)) {
 		/* Prepare poll */
 		num = 0;
 		if(video_fd != -1) {
@@ -1097,7 +895,6 @@ static void *janus_ultrasound_relay_thread(void *data) {
 					bytes = recvfrom(video_fd, buffer, 1500, 0, (struct sockaddr*)&remote, &addrlen);
 					//~ JANUS_LOG(LOG_VERB, "************************\nGot %d bytes on the video channel...\n", bytes);
 					rtp_header *rtp = (rtp_header *)buffer;
-					/* First of all, let's check if this is (part of) a keyframe that we may need to save it for future reference */
 
 					/* If paused, ignore this packet */
 					if(!mountpoint->enabled)
@@ -1106,9 +903,7 @@ static void *janus_ultrasound_relay_thread(void *data) {
 						//~ ntohl(rtp->ssrc), rtp->type, ntohs(rtp->seq_number), ntohl(rtp->timestamp));
 					/* Relay on all sessions */
 					packet.data = rtp;
-					packet.length = bytes;
-					packet.is_video = 1;
-					packet.is_keyframe = 0;
+                    packet.length = bytes;
 					/* Do we have a new stream? */
 					if(ntohl(packet.data->ssrc) != v_last_ssrc) {
 						v_last_ssrc = ntohl(packet.data->ssrc);
@@ -1153,8 +948,7 @@ static void *janus_ultrasound_relay_thread(void *data) {
 		janus_ultrasound_session *session = (janus_ultrasound_session *)viewer->data;
 		if(session != NULL) {
 			session->stopping = TRUE;
-			session->started = FALSE;
-			session->paused = FALSE;
+            session->started = FALSE;
 			session->mountpoint = NULL;
 			/* Tell the core to tear down the PeerConnection, hangup_media will do the rest */
 			gateway->push_event(session->handle, &janus_ultrasound_plugin, NULL, event_text, NULL, NULL);
@@ -1165,6 +959,8 @@ static void *janus_ultrasound_relay_thread(void *data) {
 	}
 	g_free(event_text);
 	janus_mutex_unlock(&mountpoint->mutex);
+
+    janus_ultrasound_mountpoint_free(mountpoint);
 
 	JANUS_LOG(LOG_VERB, "[%s] Leaving ultrasound relay thread\n", name);
 	g_free(name);
@@ -1183,33 +979,29 @@ static void janus_ultrasound_relay_rtp_packet(gpointer data, gpointer user_data)
 		//~ JANUS_LOG(LOG_ERR, "Invalid session...\n");
 		return;
 	}
-	if(!packet->is_keyframe && (!session->started || session->paused)) {
-		//~ JANUS_LOG(LOG_ERR, "Streaming not started yet for this session...\n");
-		return;
-	}
 
 	/* Make sure there hasn't been a publisher switch by checking the SSRC */
-	if(packet->is_video) {
-		if(ntohl(packet->data->ssrc) != session->context.v_last_ssrc) {
-			session->context.v_last_ssrc = ntohl(packet->data->ssrc);
-			session->context.v_base_ts_prev = session->context.v_last_ts;
-			session->context.v_base_ts = packet->timestamp;
-			session->context.v_base_seq_prev = session->context.v_last_seq;
-			session->context.v_base_seq = packet->seq_number;
-		}
-		/* Compute a coherent timestamp and sequence number */
-		session->context.v_last_ts = (packet->timestamp-session->context.v_base_ts)
-			+ session->context.v_base_ts_prev+4500;	/* FIXME When switching, we assume 15fps */
-		session->context.v_last_seq = (packet->seq_number-session->context.v_base_seq)+session->context.v_base_seq_prev+1;
-		/* Update the timestamp and sequence number in the RTP packet, and send it */
-		packet->data->timestamp = htonl(session->context.v_last_ts);
-		packet->data->seq_number = htons(session->context.v_last_seq);
-		if(gateway != NULL)
-			gateway->relay_rtp(session->handle, packet->is_video, (char *)packet->data, packet->length);
-		/* Restore the timestamp and sequence number to what the publisher set them to */
-		packet->data->timestamp = htonl(packet->timestamp);
-		packet->data->seq_number = htons(packet->seq_number);
+
+    if(ntohl(packet->data->ssrc) != session->context.v_last_ssrc) {
+        session->context.v_last_ssrc = ntohl(packet->data->ssrc);
+        session->context.v_base_ts_prev = session->context.v_last_ts;
+        session->context.v_base_ts = packet->timestamp;
+        session->context.v_base_seq_prev = session->context.v_last_seq;
+        session->context.v_base_seq = packet->seq_number;
     }
+    /* Compute a coherent timestamp and sequence number */
+    session->context.v_last_ts = (packet->timestamp-session->context.v_base_ts)
+        + session->context.v_base_ts_prev+4500;	/* FIXME When switching, we assume 15fps */
+    session->context.v_last_seq = (packet->seq_number-session->context.v_base_seq)+session->context.v_base_seq_prev+1;
+    /* Update the timestamp and sequence number in the RTP packet, and send it */
+    packet->data->timestamp = htonl(session->context.v_last_ts);
+    packet->data->seq_number = htons(session->context.v_last_seq);
+    if(gateway != NULL)
+        gateway->relay_rtp(session->handle, true, (char *)packet->data, packet->length);
+    /* Restore the timestamp and sequence number to what the publisher set them to */
+    packet->data->timestamp = htonl(packet->timestamp);
+    packet->data->seq_number = htons(packet->seq_number);
+
 
 	return;
 }
@@ -1249,7 +1041,7 @@ void Plugin::incomingData(janus_plugin_session *handle, char* buffer, int length
     free(msg);
 }
 
-char* createSDP(janus_ultrasound_mountpoint* mp) {
+char* createSDP(RTPSource* mp) {
     gint64 sessid = janus_get_real_time();
     gint64 version = sessid;
     std::string general = str(boost::format("%s\r\n%s\r\n%s\r\n%s\r\n") %

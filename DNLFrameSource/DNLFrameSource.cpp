@@ -64,7 +64,7 @@ void DNLFrameSource::getPNG(DNLImage::Pointer image, char** data, size_t* size) 
         };
         double slicePosition[] = {0, 0, slice};
 
-        resliceAxes =  vtkMatrix4x4::New();
+        resliceAxes = vtkSmartPointer<vtkMatrix4x4>::New();
         resliceAxes->DeepCopy(sliceOrientation);
         resliceAxes->SetElement(0, 3, slicePosition[0]);
         resliceAxes->SetElement(1, 3, slicePosition[1]);

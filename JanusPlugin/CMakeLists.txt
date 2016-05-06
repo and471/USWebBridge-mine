@@ -44,6 +44,7 @@ set (SRCS
     janus_ultrasound.cpp
     JanusUltrasoundPlugin.cpp
     JanusUltrasoundSession.cpp
+    RTPSource.cpp
     plugin_hooks.cpp
 )
 
