@@ -2,7 +2,11 @@
 #include <gstreamermm.h>
 #include <string>
 
+#include "DummyController.h"
+
 #include <USPipelineInterface/FrameSource.h>
+#include <USPipelineInterface/UltrasoundImagePipeline.h>
+#include <USPipelineInterface/UltrasoundController.h>
 #include <DNLFrameSource/DNLFileFrameSource.h>
 #include <GstPipeline/GstUltrasoundImagePipeline.h>
 
@@ -20,8 +24,10 @@ int main(int argc, char *argv[]) {
     std::string folder = argv[1];
 
     FrameSource* frame_source = new DNLFileFrameSource(folder);
-    GstUltrasoundImagePipeline *pipeline = new GstUltrasoundImagePipeline(NULL);
+    UltrasoundController* controller = new DummyController();
+    UltrasoundImagePipeline *pipeline = new GstUltrasoundImagePipeline(controller);
     pipeline->setFrameSource(frame_source);
+    controller->setPipeline(pipeline);
 
     pipeline->start();
 
@@ -31,6 +37,7 @@ int main(int argc, char *argv[]) {
     pipeline->stop();
 
     delete pipeline;
+    delete controller;
     delete frame_source;
 
     return 0;

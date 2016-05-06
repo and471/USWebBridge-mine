@@ -34,6 +34,10 @@ void JanusUltrasoundPlugin::onDataReceived(janus_plugin_session* handle, char* m
     sessions[handle]->onDataReceived(msg);
 }
 
+int JanusUltrasoundPlugin::getSessionPort(janus_plugin_session* handle) {
+    return sessions[handle]->getPort();
+}
+
 FrameSource* JanusUltrasoundPlugin::createFrameSource() {
     std::string folder = "/home/andrew/Project/forAndrew3D";
     return new DNLFileFrameSource(folder);

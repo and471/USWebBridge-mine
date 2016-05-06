@@ -11,6 +11,8 @@ class UltrasoundController; // forward declaration
 class UltrasoundImagePipeline
 {
 public:
+    virtual ~UltrasoundImagePipeline() {};
+
     virtual void start()=0;
     virtual void stop()=0;
 

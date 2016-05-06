@@ -15,10 +15,11 @@ void FrameSource::removeOnFrameCallback(int callbackID) {
     onFrameCallbacks.erase(callbackID);
 }
 
-void FrameSource::onFrame(Frame* image) {
+void FrameSource::onFrame(Frame* frame) {
     for (auto entry : onFrameCallbacks) {
-        entry.second(image);
+        entry.second(frame);
     }
+    delete frame;
 }
 
 int FrameSource::addOnNSlicesChangedCallback(std::function<void(int)> cb) {

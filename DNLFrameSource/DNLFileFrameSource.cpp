@@ -23,6 +23,7 @@ void DNLFileFrameSource::start() {
     // Only ever start one thread
     if (this->thread != nullptr) return;
 
+    this->stop_image_generation = false;
     this->thread = new std::thread(&DNLFileFrameSource::GenerateImagesThread, this);
 }
 
@@ -62,6 +63,7 @@ void DNLFileFrameSource::stop() {
     }
 
     delete this->thread;
+    this->thread = nullptr;
 }
 
 /*

@@ -17,6 +17,8 @@ public:
     void newSession(janus_plugin_session* handle);
     void destroySession(janus_plugin_session* handle);
     void onSessionReady(janus_plugin_session* handle);
+    int getSessionPort(janus_plugin_session* handle);
+
     void onDataReceived(janus_plugin_session* handle, char* msg);
 
     FrameSource* createFrameSource();

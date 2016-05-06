@@ -31,6 +31,7 @@ void JanusUltrasoundSession::setPipeline(UltrasoundImagePipeline *pipeline) {
 void JanusUltrasoundSession::start() {
     if (!started) {
         pipeline->start();
+        started = true;
     }
 }
 
@@ -82,6 +83,10 @@ void JanusUltrasoundSession::onDataReceived(char* msg) {
     }
 
     json_decref(obj);
+}
+
+int JanusUltrasoundSession::getPort() {
+    return pipeline->getPort();
 }
 
 void JanusUltrasoundSession::onSetSlice(int slice) {

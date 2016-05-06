@@ -27,6 +27,7 @@ set(LIBS ${LIBS} ${GSTMM_LIBRARIES})
 
 add_executable(USPipelineDemo
     main.cpp
+    DummyController.cpp
 )
 
 TARGET_LINK_LIBRARIES(USPipelineDemo

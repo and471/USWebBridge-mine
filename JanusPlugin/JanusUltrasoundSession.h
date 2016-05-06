@@ -24,7 +24,7 @@ public:
     void sendMethod(json_t* data, std::string method);
     void sendData(json_t* obj);
     void onDataReceived(char* data);
-    void setPipeline(UltrasoundImagePipeline* pipeline);
+    int getPort();
 
     // Virtual methods
     void start();
@@ -33,6 +33,7 @@ public:
     void onNSlicesChanged(int nSlices);
     void onSetSlice(int slice);
     void setOnSetSliceCallback(std::function<void(int)> cb);
+    void setPipeline(UltrasoundImagePipeline* pipeline);
 
 private:
     janus_callbacks* gateway;

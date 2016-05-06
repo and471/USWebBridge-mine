@@ -3,23 +3,24 @@
 #include <thread>
 
 void FrameExchange::add_frame(Frame* frame) {
-    mutex.lock();
+    std::unique_lock<std::mutex> lock(mutex);
+    // LOCK
     delete this->frame;
     this->frame = Frame::copy(frame);
-    mutex.unlock();
+    // UNLOCK
 }
 
 Frame* FrameExchange::get_frame() {
-
     // Block until we have at least one frame
     while (frame == nullptr) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 
-    mutex.lock();
+    std::unique_lock<std::mutex> lock(mutex);
+    // LOCK
     Frame* copy = Frame::copy(frame);
-    mutex.unlock();
     return copy;
+    // UNLOCK
 }
 
 FrameExchange::~FrameExchange() {

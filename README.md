@@ -1,5 +1,28 @@
 # USWebBridge
  
+## Project Structure
+
+The general flow of the project is:
+
+`(FrameSource) --> (UltrasoundImagePipeline) --[udp]--> (UltrasoundController) `
+
+These abstract classes are contained within USPipelineInterface.
+
+Specific implementations for these abstract classes are as follows:
+
+
+* DNLFrameSource/
+  Contains the abstract class `DNLFrameSource`, which implements FrameSource, by reading `DNLImage`'s.
+  `DNLFileFrameSource` is an implementation of `DNLFrameSource` which reads a set of files from disk.
+
+* GstPipeline/
+  Contains the `UltrasoundImagePipeline` implementation `GstImagePipeline` which uses Gstreamer.
+
+* JanusPlugin/
+  Contains the `UltrasoundController` implementation `JanusPluginSession` which uses the 
+  Janus WebRTC gateway to forward the videostream over WebRTC.  
+
+
 ## Installation
 
 ### Janus
