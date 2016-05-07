@@ -119,7 +119,7 @@ void GstUltrasoundImagePipeline::startThread() {
 void GstUltrasoundImagePipeline::stop() {
     running = false;
 
-    if (thread->joinable()) {
+    if (thread->joinable()){
         thread->join();
     }
     delete thread;

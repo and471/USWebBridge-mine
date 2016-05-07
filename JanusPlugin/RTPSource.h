@@ -1,7 +1,7 @@
 #ifndef RTP_SOURCE_H
 #define RTP_SOURCE_H
 
-extern "C" {
+
 #include <janus/debug.h>
 #include <janus/apierror.h>
 #include <janus/config.h>
@@ -11,15 +11,17 @@ extern "C" {
 #include <janus/record.h>
 #include <janus/utils.h>
 #include <janus/plugin.h>
-}
 
 #include "janus_ultrasound.h"
 
 class RTPSource {
 
 public:
-    RTPSource();
+    RTPSource(int id, char* name, int video_port, int video_fd, int video_codec,
+              char* video_rtpmap);
     ~RTPSource();
+
+    char* createSDP();
 
 	int id;
 	char* name = nullptr;

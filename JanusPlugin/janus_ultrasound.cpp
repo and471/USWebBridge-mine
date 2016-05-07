@@ -45,53 +45,15 @@ static void *janus_ultrasound_handler(void *data);
 static void janus_ultrasound_relay_rtp_packet(gpointer data, gpointer user_data);
 static void *janus_ultrasound_relay_thread(void *data);
 
-#define JANUS_ULTRASOUND_VP8		0
 
-
-typedef struct janus_ultrasound_mountpoint {
-    gint64 id;
-    char *name;
-    gboolean is_private;
-    char *secret;
-    char *pin;
-    gboolean enabled;
-    gboolean active;
-    void *source;	/* Can differ according to the source type */
-    GDestroyNotify source_destroy;
-    janus_ultrasound_codecs codecs;
-    GList/*<unowned janus_ultrasound_session>*/ *listeners;
-    gint64 destroyed;
-    janus_mutex mutex;
-
-
-    gint video_port;
-    in_addr_t video_mcast;
-    int video_fd;
-    gint64 last_received_video;
-
-
-} janus_ultrasound_mountpoint;
 GHashTable *mountpoints;
 static GList *old_mountpoints;
 janus_mutex mountpoints_mutex;
-
-
-
-char* createSDP(RTPSource* mp);
-
-static void janus_ultrasound_mountpoint_free(RTPSource* mp);
 
 /* Helper to create an RTP live source (e.g., from gstreamer/ffmpeg/vlc/etc.) */
 RTPSource* janus_ultrasound_create_rtp_source(uint64_t id, char *name, uint16_t vport,
                                               uint8_t vcodec, char *vrtpmap);
 
-typedef struct janus_ultrasound_message {
-    janus_plugin_session *handle;
-    char *transaction;
-    json_t *message;
-    char *sdp_type;
-    char *sdp;
-} janus_ultrasound_message;
 static GAsyncQueue *messages = NULL;
 static janus_ultrasound_message exit_message;
 
@@ -115,21 +77,6 @@ static void janus_ultrasound_message_free(janus_ultrasound_message *msg) {
 }
 
 
-typedef struct janus_ultrasound_context {
-    /* Needed to fix seq and ts in case of stream switching */
-    uint32_t v_last_ssrc, v_last_ts, v_base_ts, v_base_ts_prev;
-    uint16_t v_last_seq, v_base_seq, v_base_seq_prev;
-} janus_ultrasound_context;
-
-typedef struct janus_ultrasound_session {
-    janus_plugin_session *handle;
-    RTPSource* mountpoint;
-    gboolean started;
-    janus_ultrasound_context context;
-    gboolean stopping;
-    volatile gint hangingup;
-    gint64 destroyed;	/* Time at which this session was marked as destroyed */
-} janus_ultrasound_session;
 static GHashTable *sessions;
 static GList *old_sessions;
 static janus_mutex sessions_mutex;
@@ -162,10 +109,6 @@ typedef struct janus_ultrasound_rtp_relay_packet {
 int janus_ultrasound_init(janus_callbacks *callback, const char *config_path) {
     if(g_atomic_int_get(&stopping)) {
         /* Still stopping from before */
-        return -1;
-    }
-    if(callback == NULL) {
-        /* Invalid arguments */
         return -1;
     }
 
@@ -215,7 +158,7 @@ void janus_ultrasound_destroy(void) {
 	g_hash_table_iter_init(&iter, mountpoints);
 	while (g_hash_table_iter_next(&iter, NULL, &value)) {
         RTPSource* mp = value;
-        janus_ultrasound_mountpoint_free(mp);
+        delete mp;
 	}
 	janus_mutex_unlock(&mountpoints_mutex);
 
@@ -290,7 +233,7 @@ void janus_ultrasound_destroy_session(janus_plugin_session *handle, int *error) 
         session->mountpoint->listeners = g_list_remove_all(session->mountpoint->listeners, session);
         janus_mutex_unlock(&session->mountpoint->mutex);
 
-        janus_ultrasound_mountpoint_free(session->mountpoint);
+        delete session->mountpoint;
 	}
 	janus_mutex_lock(&sessions_mutex);
 	if(!session->destroyed) {
@@ -327,140 +270,168 @@ char *janus_ultrasound_query_session(janus_plugin_session *handle) {
 	return info_text;
 }
 
-struct janus_plugin_result *janus_ultrasound_handle_message(janus_plugin_session *handle, char *transaction, char *message, char *sdp_type, char *sdp) {
-	if(g_atomic_int_get(&stopping) || !g_atomic_int_get(&initialized))
-		return janus_plugin_result_new(JANUS_PLUGIN_ERROR, g_atomic_int_get(&stopping) ? "Shutting down" : "Plugin not initialized");
 
-	/* Pre-parse the message */
-	int error_code = 0;
-	char error_cause[512];
-	json_t *root = NULL;
-	json_t *response = NULL;
-
-	if(message == NULL) {
-		JANUS_LOG(LOG_ERR, "No message??\n");
-		error_code = JANUS_ULTRASOUND_ERROR_NO_MESSAGE;
-		g_snprintf(error_cause, 512, "%s", "No message??");
-		goto error;
-	}
-	JANUS_LOG(LOG_VERB, "Handling message: %s\n", message);
-
-	janus_ultrasound_session *session = (janus_ultrasound_session *)handle->plugin_handle;	
-	if(!session) {
-		JANUS_LOG(LOG_ERR, "No session associated with this handle...\n");
-		error_code = JANUS_ULTRASOUND_ERROR_UNKNOWN_ERROR;
-		g_snprintf(error_cause, 512, "%s", "session associated with this handle...");
-		goto error;
-	}
-	if(session->destroyed) {
-		JANUS_LOG(LOG_ERR, "Session has already been destroyed...\n");
-		error_code = JANUS_ULTRASOUND_ERROR_UNKNOWN_ERROR;
-		g_snprintf(error_cause, 512, "%s", "Session has already been destroyed...");
-		goto error;
-	}
-	json_error_t error;
-	root = json_loads(message, 0, &error);
-	if(!root) {
-		JANUS_LOG(LOG_ERR, "JSON error: on line %d: %s\n", error.line, error.text);
-		error_code = JANUS_ULTRASOUND_ERROR_INVALID_JSON;
-		g_snprintf(error_cause, 512, "JSON error: on line %d: %s", error.line, error.text);
-		goto error;
-	}
-	if(!json_is_object(root)) {
-		JANUS_LOG(LOG_ERR, "JSON error: not an object\n");
-		error_code = JANUS_ULTRASOUND_ERROR_INVALID_JSON;
-		g_snprintf(error_cause, 512, "JSON error: not an object");
-		goto error;
-	}
-	/* Get the request first */
-	json_t *request = json_object_get(root, "request");
-	if(!request) {
-		JANUS_LOG(LOG_ERR, "Missing element (request)\n");
-		error_code = JANUS_ULTRASOUND_ERROR_MISSING_ELEMENT;
-		g_snprintf(error_cause, 512, "Missing element (request)");
-		goto error;
-	}
-	if(!json_is_string(request)) {
-		JANUS_LOG(LOG_ERR, "Invalid element (request should be a string)\n");
-		error_code = JANUS_ULTRASOUND_ERROR_INVALID_ELEMENT;
-		g_snprintf(error_cause, 512, "Invalid element (request should be a string)");
-		goto error;
-	}
-	/* Some requests ('create' and 'destroy') can be handled synchronously */
-	const char *request_text = json_string_value(request);
-    if(!strcasecmp(request_text, "watch") || !strcasecmp(request_text, "start") ||
-       !strcasecmp(request_text, "stop"))
-    {
-        /* These messages are handled asynchronously in janus_ultrasound_handler */
-		janus_ultrasound_message *msg = g_malloc0(sizeof(janus_ultrasound_message));
-		if(msg == NULL) {
-			JANUS_LOG(LOG_FATAL, "Memory error!\n");
-			error_code = JANUS_ULTRASOUND_ERROR_UNKNOWN_ERROR;
-			g_snprintf(error_cause, 512, "Memory error");
-			goto error;
-		}
-
-		g_free(message);
-		msg->handle = handle;
-		msg->transaction = transaction;
-		msg->message = root;
-		msg->sdp_type = sdp_type;
-		msg->sdp = sdp;
-
-		g_async_queue_push(messages, msg);
-
-		return janus_plugin_result_new(JANUS_PLUGIN_OK_WAIT, NULL);
-    } else if(!strcasecmp(request_text, "ready")) {
-        us_plugin->onSessionReady(handle);
-    } else {
-		JANUS_LOG(LOG_VERB, "Unknown request '%s'\n", request_text);
-		error_code = JANUS_ULTRASOUND_ERROR_INVALID_REQUEST;
-		g_snprintf(error_cause, 512, "Unknown request '%s'", request_text);
-		goto error;
-	}
-
-plugin_response:
-		{
-			if(!response) {
-				error_code = JANUS_ULTRASOUND_ERROR_UNKNOWN_ERROR;
-				g_snprintf(error_cause, 512, "Invalid response");
-				goto error;
-			}
-			if(root != NULL)
-				json_decref(root);
-			g_free(transaction);
-			g_free(message);
-			g_free(sdp_type);
-			g_free(sdp);
-
-			char *response_text = json_dumps(response, JSON_INDENT(3) | JSON_PRESERVE_ORDER);
-			json_decref(response);
-			janus_plugin_result *result = janus_plugin_result_new(JANUS_PLUGIN_OK, response_text);
-			g_free(response_text);
-			return result;
-		}
+/* Thread to handle incoming messages */
+static void *janus_ultrasound_handler(void *data) {
+    JANUS_LOG(LOG_VERB, "Joining Streaming handler thread\n");
+    janus_ultrasound_message *msg = NULL;
+    int error_code = 0;
+    char *error_cause = g_malloc0(1024);
+    if(error_cause == NULL) {
+        JANUS_LOG(LOG_FATAL, "Memory error!\n");
+        return NULL;
+    }
+    json_t *root = NULL;
+    while(g_atomic_int_get(&initialized) && !g_atomic_int_get(&stopping)) {
+        msg = g_async_queue_pop(messages);
+        if(msg == NULL)
+            continue;
+        if(msg == &exit_message)
+            break;
+        if(msg->handle == NULL) {
+            janus_ultrasound_message_free(msg);
+            continue;
+        }
+        janus_ultrasound_session *session = NULL;
+        janus_mutex_lock(&sessions_mutex);
+        if(g_hash_table_lookup(sessions, msg->handle) != NULL ) {
+            session = (janus_ultrasound_session *)msg->handle->plugin_handle;
+        }
+        janus_mutex_unlock(&sessions_mutex);
+        if(!session) {
+            JANUS_LOG(LOG_ERR, "No session associated with this handle...\n");
+            janus_ultrasound_message_free(msg);
+            continue;
+        }
+        if(session->destroyed) {
+            janus_ultrasound_message_free(msg);
+            continue;
+        }
+        /* Handle request */
+        error_code = 0;
+        root = NULL;
+        if(msg->message == NULL) {
+            JANUS_LOG(LOG_ERR, "No message??\n");
+            error_code = JANUS_ULTRASOUND_ERROR_NO_MESSAGE;
+            g_snprintf(error_cause, 512, "%s", "No message??");
+            goto error;
+        }
+        root = msg->message;
+        /* Get the request first */
+        json_t *request = json_object_get(root, "request");
+        if(!request) {
+            JANUS_LOG(LOG_ERR, "Missing element (request)\n");
+            error_code = JANUS_ULTRASOUND_ERROR_MISSING_ELEMENT;
+            g_snprintf(error_cause, 512, "Missing element (request)");
+            goto error;
+        }
+        if(!json_is_string(request)) {
+            JANUS_LOG(LOG_ERR, "Invalid element (request should be a string)\n");
+            error_code = JANUS_ULTRASOUND_ERROR_INVALID_ELEMENT;
+            g_snprintf(error_cause, 512, "Invalid element (request should be a string)");
+            goto error;
+        }
+        const char *request_text = json_string_value(request);
+        json_t *result = NULL;
+        const char *sdp_type = NULL;
+        char *sdp = NULL;
+        /* All these requests can only be handled asynchronously */
+        if(!strcasecmp(request_text, "watch")) {
+            Plugin::handleMessageWatch(session, msg, root);
+            continue;
+        } else if(!strcasecmp(request_text, "ready")) {
+            Plugin::handleMessageReady(session, msg, root);
+            continue;
+        } else if(!strcasecmp(request_text, "start")) {
+            Plugin::handleMessageStart(session, msg, root);
+            continue;
+        } else if(!strcasecmp(request_text, "stop")) {
+            Plugin::handleMessageStop(session, msg, root);
+            continue;
+        } else {
+            JANUS_LOG(LOG_VERB, "Unknown request '%s'\n", request_text);
+            error_code = JANUS_ULTRASOUND_ERROR_INVALID_REQUEST;
+            g_snprintf(error_cause, 512, "Unknown request '%s'", request_text);
+            goto error;
+        }
 
 error:
-		{
-			if(root != NULL)
-				json_decref(root);
-			g_free(transaction);
-			g_free(message);
-			g_free(sdp_type);
-			g_free(sdp);
+        {
+            /* Prepare JSON error event */
+            json_t *event = json_object();
+            json_object_set_new(event, "ultrasound", json_string("event"));
+            json_object_set_new(event, "error_code", json_integer(error_code));
+            json_object_set_new(event, "error", json_string(error_cause));
+            char *event_text = json_dumps(event, JSON_INDENT(3) | JSON_PRESERVE_ORDER);
+            json_decref(event);
+            JANUS_LOG(LOG_VERB, "Pushing event: %s\n", event_text);
+            int ret = gateway->push_event(msg->handle, &janus_ultrasound_plugin, msg->transaction, event_text, NULL, NULL);
+            JANUS_LOG(LOG_VERB, "  >> %d (%s)\n", ret, janus_get_api_error(ret));
+            g_free(event_text);
+            janus_ultrasound_message_free(msg);
+        }
+    }
+    g_free(error_cause);
+    JANUS_LOG(LOG_VERB, "Leaving Streaming handler thread\n");
+    return NULL;
+}
 
-			/* Prepare JSON error event */
-			json_t *event = json_object();
-			json_object_set_new(event, "ultrasound", json_string("event"));
-			json_object_set_new(event, "error_code", json_integer(error_code));
-			json_object_set_new(event, "error", json_string(error_cause));
-			char *event_text = json_dumps(event, JSON_INDENT(3) | JSON_PRESERVE_ORDER);
-			json_decref(event);
-			janus_plugin_result *result = janus_plugin_result_new(JANUS_PLUGIN_OK, event_text);
-			g_free(event_text);
-			return result;
-		}
+void Plugin::sendPostMessageEvent(json_t* result, janus_ultrasound_message* msg,
+                                  char* sdp, char* sdp_type)
+{
+    /* Prepare JSON event */
+    json_t *event = json_object();
+    json_object_set_new(event, "ultrasound", json_string("event"));
+    if(result != NULL)
+        json_object_set_new(event, "result", result);
+    char *event_text = json_dumps(event, JSON_INDENT(3) | JSON_PRESERVE_ORDER);
+    json_decref(event);
+    JANUS_LOG(LOG_VERB, "Pushing event: %s\n", event_text);
+    int ret = gateway->push_event(msg->handle, &janus_ultrasound_plugin, msg->transaction, event_text, sdp_type, sdp);
+    JANUS_LOG(LOG_VERB, "  >> %d (%s)\n", ret, janus_get_api_error(ret));
+    g_free(event_text);
+    if(sdp)
+        g_free(sdp);
+    janus_ultrasound_message_free(msg);
+}
 
+void Plugin::handleMessageStop(janus_ultrasound_session *session, janus_ultrasound_message *msg, json_t *root) {
+    if(session->stopping || !session->started) {
+        janus_ultrasound_message_free(msg);
+        return;
+    }
+    JANUS_LOG(LOG_VERB, "Stopping the ultrasound\n");
+    session->stopping = TRUE;
+    session->started = FALSE;
+    json_t* result = json_object();
+    json_object_set_new(result, "status", json_string("stopping"));
+    if(session->mountpoint) {
+        janus_mutex_lock(&session->mountpoint->mutex);
+        JANUS_LOG(LOG_VERB, "  -- Removing the session from the mountpoint listeners\n");
+        if(g_list_find(session->mountpoint->listeners, session) != NULL) {
+            JANUS_LOG(LOG_VERB, "  -- -- Found!\n");
+        }
+        session->mountpoint->listeners = g_list_remove_all(session->mountpoint->listeners, session);
+        janus_mutex_unlock(&session->mountpoint->mutex);
+    }
+    session->mountpoint = NULL;
+    /* Tell the core to tear down the PeerConnection, hangup_media will do the rest */
+    gateway->close_pc(session->handle);
+    Plugin::sendPostMessageEvent(result, msg, NULL, NULL);
+}
+
+void Plugin::handleMessageStart(janus_ultrasound_session *session, janus_ultrasound_message* msg, json_t* root) {
+    /*if(session->mountpoint == NULL) {
+        JANUS_LOG(LOG_VERB, "Can't start: no mountpoint set\n");
+        error_code = JANUS_ULTRASOUND_ERROR_NO_SUCH_MOUNTPOINT;
+        g_snprintf(error_cause, 512, "Can't start: no mountpoint set");
+        goto error;
+    }*/
+    JANUS_LOG(LOG_VERB, "Starting the ultrasound\n");
+    json_t* result = json_object();
+    /* We wait for the setup_media event to start: on the other hand, it may have already arrived */
+    json_object_set_new(result, "status", json_string(session->started ? "started" : "starting"));
+    Plugin::sendPostMessageEvent(result, msg, NULL, NULL);
 }
 
 void janus_ultrasound_setup_media(janus_plugin_session *handle) {
@@ -501,6 +472,8 @@ void janus_ultrasound_setup_media(janus_plugin_session *handle) {
     g_free(event_text);
 
 }
+
+
 
 void janus_ultrasound_incoming_rtp(janus_plugin_session *handle, int video, char *buf, int len) {
 	if(handle == NULL || handle->stopped || g_atomic_int_get(&stopping) || !g_atomic_int_get(&initialized))
@@ -543,206 +516,6 @@ void janus_ultrasound_hangup_media(janus_plugin_session *handle) {
 	g_async_queue_push(messages, msg);
 }
 
-/* Thread to handle incoming messages */
-static void *janus_ultrasound_handler(void *data) {
-	JANUS_LOG(LOG_VERB, "Joining Streaming handler thread\n");
-	janus_ultrasound_message *msg = NULL;
-	int error_code = 0;
-	char *error_cause = g_malloc0(1024);
-	if(error_cause == NULL) {
-		JANUS_LOG(LOG_FATAL, "Memory error!\n");
-		return NULL;
-	}
-	json_t *root = NULL;
-	while(g_atomic_int_get(&initialized) && !g_atomic_int_get(&stopping)) {
-		msg = g_async_queue_pop(messages);
-		if(msg == NULL)
-			continue;
-		if(msg == &exit_message)
-			break;
-		if(msg->handle == NULL) {
-			janus_ultrasound_message_free(msg);
-			continue;
-		}
-		janus_ultrasound_session *session = NULL;
-		janus_mutex_lock(&sessions_mutex);
-		if(g_hash_table_lookup(sessions, msg->handle) != NULL ) {
-			session = (janus_ultrasound_session *)msg->handle->plugin_handle;
-		}
-		janus_mutex_unlock(&sessions_mutex);
-		if(!session) {
-			JANUS_LOG(LOG_ERR, "No session associated with this handle...\n");
-			janus_ultrasound_message_free(msg);
-			continue;
-		}
-		if(session->destroyed) {
-			janus_ultrasound_message_free(msg);
-			continue;
-		}
-		/* Handle request */
-		error_code = 0;
-		root = NULL;
-		if(msg->message == NULL) {
-			JANUS_LOG(LOG_ERR, "No message??\n");
-			error_code = JANUS_ULTRASOUND_ERROR_NO_MESSAGE;
-			g_snprintf(error_cause, 512, "%s", "No message??");
-			goto error;
-		}
-		root = msg->message;
-		/* Get the request first */
-		json_t *request = json_object_get(root, "request");
-		if(!request) {
-			JANUS_LOG(LOG_ERR, "Missing element (request)\n");
-			error_code = JANUS_ULTRASOUND_ERROR_MISSING_ELEMENT;
-			g_snprintf(error_cause, 512, "Missing element (request)");
-			goto error;
-		}
-		if(!json_is_string(request)) {
-			JANUS_LOG(LOG_ERR, "Invalid element (request should be a string)\n");
-			error_code = JANUS_ULTRASOUND_ERROR_INVALID_ELEMENT;
-			g_snprintf(error_cause, 512, "Invalid element (request should be a string)");
-			goto error;
-		}
-		const char *request_text = json_string_value(request);
-		json_t *result = NULL;
-		const char *sdp_type = NULL;
-		char *sdp = NULL;
-		/* All these requests can only be handled asynchronously */
-		if(!strcasecmp(request_text, "watch")) {
-			json_t *id = json_object_get(root, "id");
-			if(!id) {
-				JANUS_LOG(LOG_ERR, "Missing element (id)\n");
-				error_code = JANUS_ULTRASOUND_ERROR_MISSING_ELEMENT;
-				g_snprintf(error_cause, 512, "Missing element (id)");
-				goto error;
-			}
-			if(!json_is_integer(id) || json_integer_value(id) < 0) {
-				JANUS_LOG(LOG_ERR, "Invalid element (id should be a positive integer)\n");
-				error_code = JANUS_ULTRASOUND_ERROR_INVALID_ELEMENT;
-				g_snprintf(error_cause, 512, "Invalid element (id should be a positive integer)");
-				goto error;
-			}
-            gint64 id_value = json_integer_value(id);
-
-            // HERE create new mountpoint
-
-            /* RTP live source (e.g., from gstreamer/ffmpeg/vlc/etc.) */
-            char* desc = "ULTRASOUND";
-            char* secret = "";
-            int pin = 0;
-            int vport = us_plugin->getSessionPort(msg->handle);
-            int vcodec = 100;
-            char* vrtpmap = "VP8/90000";
-            gboolean is_private = false;
-
-
-            RTPSource* mp = janus_ultrasound_create_rtp_source(
-                id,
-                desc,
-                vport,
-                vcodec,
-                vrtpmap
-            );
-
-            mp->secret = g_strdup(secret);
-
-
-			JANUS_LOG(LOG_VERB, "Request to watch mountpoint/stream %"SCNu64"\n", id_value);
-			session->stopping = FALSE;
-			session->mountpoint = mp;
-
-			/* TODO Check if user is already watching a stream, if the video is active, etc. */
-			janus_mutex_lock(&mp->mutex);
-			mp->listeners = g_list_append(mp->listeners, session);
-			janus_mutex_unlock(&mp->mutex);
-			sdp_type = "offer";	/* We're always going to do the offer ourselves, never answer */
-
-            sdp = createSDP(mp);
-
-			result = json_object();
-			json_object_set_new(result, "status", json_string("preparing"));
-		} else if(!strcasecmp(request_text, "start")) {
-			if(session->mountpoint == NULL) {
-				JANUS_LOG(LOG_VERB, "Can't start: no mountpoint set\n");
-				error_code = JANUS_ULTRASOUND_ERROR_NO_SUCH_MOUNTPOINT;
-				g_snprintf(error_cause, 512, "Can't start: no mountpoint set");
-				goto error;
-			}
-            JANUS_LOG(LOG_VERB, "Starting the ultrasound\n");
-			result = json_object();
-			/* We wait for the setup_media event to start: on the other hand, it may have already arrived */
-			json_object_set_new(result, "status", json_string(session->started ? "started" : "starting"));
-        } else if(!strcasecmp(request_text, "stop")) {
-			if(session->stopping || !session->started) {
-				/* Been there, done that: ignore */
-				janus_ultrasound_message_free(msg);
-				continue;
-			}
-			JANUS_LOG(LOG_VERB, "Stopping the ultrasound\n");
-			session->stopping = TRUE;
-            session->started = FALSE;
-			result = json_object();
-			json_object_set_new(result, "status", json_string("stopping"));
-			if(session->mountpoint) {
-				janus_mutex_lock(&session->mountpoint->mutex);
-				JANUS_LOG(LOG_VERB, "  -- Removing the session from the mountpoint listeners\n");
-				if(g_list_find(session->mountpoint->listeners, session) != NULL) {
-					JANUS_LOG(LOG_VERB, "  -- -- Found!\n");
-				}
-				session->mountpoint->listeners = g_list_remove_all(session->mountpoint->listeners, session);
-				janus_mutex_unlock(&session->mountpoint->mutex);
-			}
-			session->mountpoint = NULL;
-			/* Tell the core to tear down the PeerConnection, hangup_media will do the rest */
-			gateway->close_pc(session->handle);
-		} else {
-			JANUS_LOG(LOG_VERB, "Unknown request '%s'\n", request_text);
-			error_code = JANUS_ULTRASOUND_ERROR_INVALID_REQUEST;
-			g_snprintf(error_cause, 512, "Unknown request '%s'", request_text);
-			goto error;
-		}
-		
-		/* Any SDP to handle? */
-		if(msg->sdp) {
-			JANUS_LOG(LOG_VERB, "This is involving a negotiation (%s) as well (but we really don't care):\n%s\n", msg->sdp_type, msg->sdp);
-		}
-
-		/* Prepare JSON event */
-		json_t *event = json_object();
-		json_object_set_new(event, "ultrasound", json_string("event"));
-		if(result != NULL)
-			json_object_set_new(event, "result", result);
-		char *event_text = json_dumps(event, JSON_INDENT(3) | JSON_PRESERVE_ORDER);
-		json_decref(event);
-		JANUS_LOG(LOG_VERB, "Pushing event: %s\n", event_text);
-		int ret = gateway->push_event(msg->handle, &janus_ultrasound_plugin, msg->transaction, event_text, sdp_type, sdp);
-		JANUS_LOG(LOG_VERB, "  >> %d (%s)\n", ret, janus_get_api_error(ret));
-		g_free(event_text);
-		if(sdp)
-			g_free(sdp);
-		janus_ultrasound_message_free(msg);
-		continue;
-		
-error:
-		{
-			/* Prepare JSON error event */
-			json_t *event = json_object();
-			json_object_set_new(event, "ultrasound", json_string("event"));
-			json_object_set_new(event, "error_code", json_integer(error_code));
-			json_object_set_new(event, "error", json_string(error_cause));
-			char *event_text = json_dumps(event, JSON_INDENT(3) | JSON_PRESERVE_ORDER);
-			json_decref(event);
-			JANUS_LOG(LOG_VERB, "Pushing event: %s\n", event_text);
-			int ret = gateway->push_event(msg->handle, &janus_ultrasound_plugin, msg->transaction, event_text, NULL, NULL);
-			JANUS_LOG(LOG_VERB, "  >> %d (%s)\n", ret, janus_get_api_error(ret));
-			g_free(event_text);
-			janus_ultrasound_message_free(msg);
-		}
-	}
-	g_free(error_cause);
-	JANUS_LOG(LOG_VERB, "Leaving Streaming handler thread\n");
-	return NULL;
-}
 
 /* Helpers to create a listener filedescriptor */
 static int janus_ultrasound_create_fd(int port, in_addr_t mcast, const char* listenername, const char* medianame, const char* mountpointname) {
@@ -786,12 +559,6 @@ static int janus_ultrasound_create_fd(int port, in_addr_t mcast, const char* lis
 }
 
 
-static void janus_ultrasound_mountpoint_free(RTPSource* mp) {
-    delete mp;
-}
-
-
-/* Helper to create an RTP live source (e.g., from gstreamer/ffmpeg/vlc/etc.) */
 RTPSource* janus_ultrasound_create_rtp_source(uint64_t id, char *name, uint16_t vport,
                                               uint8_t vcodec, char *vrtpmap)
 {
@@ -806,24 +573,8 @@ RTPSource* janus_ultrasound_create_rtp_source(uint64_t id, char *name, uint16_t 
 
 	/* Create the mountpoint */
 
-    RTPSource* rtp_source = new RTPSource();
+    RTPSource* rtp_source = new RTPSource(id, strdup(name), vport, video_fd, vcodec, strdup(vrtpmap));
 
-    rtp_source->id = id;
-    rtp_source->name = g_strdup(name);
-
-    rtp_source->enabled = TRUE;
-    rtp_source->active = FALSE;
-
-    rtp_source->video_mcast = INADDR_ANY;
-    rtp_source->video_port = vport;
-    rtp_source->video_fd = video_fd;
-    rtp_source->last_received_video = janus_get_monotonic_time();
-    rtp_source->codecs.video_codec = JANUS_ULTRASOUND_VP8;
-    rtp_source->codecs.video_pt = vcodec;
-    rtp_source->codecs.video_rtpmap = g_strdup(vrtpmap);
-    rtp_source->codecs.video_fmtp = NULL;
-    rtp_source->listeners = NULL;
-    janus_mutex_init(&rtp_source->mutex);
     g_hash_table_insert(mountpoints, GINT_TO_POINTER(rtp_source->id), rtp_source);
     janus_mutex_unlock(&mountpoints_mutex);
     GError *error = NULL;
@@ -960,7 +711,7 @@ static void *janus_ultrasound_relay_thread(void *data) {
 	g_free(event_text);
 	janus_mutex_unlock(&mountpoint->mutex);
 
-    janus_ultrasound_mountpoint_free(mountpoint);
+    delete mountpoint;
 
 	JANUS_LOG(LOG_VERB, "[%s] Leaving ultrasound relay thread\n", name);
 	g_free(name);
@@ -1006,6 +757,113 @@ static void janus_ultrasound_relay_rtp_packet(gpointer data, gpointer user_data)
 	return;
 }
 
+void Plugin::handleMessageReady(janus_ultrasound_session *session, janus_ultrasound_message* msg, json_t* root) {
+    us_plugin->onSessionReady(msg->handle);
+}
+
+void Plugin::handleMessageWatch(janus_ultrasound_session *session, janus_ultrasound_message* msg, json_t* root) {
+
+    /* RTP live source (e.g., from gstreamer/ffmpeg/vlc/etc.) */
+    char* desc = "ULTRASOUND";
+    char* secret = "";
+    int pin = 0;
+    int vport = us_plugin->getSessionPort(msg->handle);
+    int vcodec = 100;
+    char* vrtpmap = "VP8/90000";
+    gboolean is_private = false;
+
+
+    RTPSource* mp = janus_ultrasound_create_rtp_source(
+        1,
+        desc,
+        vport,
+        vcodec,
+        vrtpmap
+    );
+
+    mp->secret = g_strdup(secret);
+
+    session->stopping = FALSE;
+    session->mountpoint = mp;
+
+    /* TODO Check if user is already watching a stream, if the video is active, etc. */
+    janus_mutex_lock(&mp->mutex);
+    mp->listeners = g_list_append(mp->listeners, session);
+    janus_mutex_unlock(&mp->mutex);
+    char* sdp_type = "offer";	/* We're always going to do the offer ourselves, never answer */
+
+    char* sdp = mp->createSDP();
+
+    json_t* result = json_object();
+    json_object_set_new(result, "status", json_string("preparing"));
+
+    Plugin::sendPostMessageEvent(result, msg, sdp, sdp_type);
+}
+
+janus_plugin_result* Plugin::onMessage(janus_plugin_session *handle, char *transaction,
+                                     char *message, char *sdp_type, char *sdp)
+{
+
+    if(g_atomic_int_get(&stopping) || !g_atomic_int_get(&initialized)) {
+        return janus_plugin_result_new(JANUS_PLUGIN_ERROR,
+               g_atomic_int_get(&stopping) ? "Shutting down" : "Plugin not initialized");
+    }
+
+    if(message == NULL || handle ->plugin_handle == NULL ||
+      ((janus_ultrasound_session *)handle->plugin_handle)->destroyed)
+    {
+        return Plugin::handleMessageError(handle, transaction, message, NULL, sdp_type, sdp, "Empty message");
+    }
+
+    json_t *root = json_loads(message, 0, NULL);
+    if(!root || !json_is_object(root)) {
+        return Plugin::handleMessageError(handle, transaction, message, root, sdp_type, sdp, "JSON Error");
+    }
+
+    json_t *request = json_object_get(root, "request");
+    if(!request || !json_is_string(request)) {
+        return Plugin::handleMessageError(handle, transaction, message, root, sdp_type, sdp, "Missing element (request)");
+    }
+
+    Plugin::addMessageToQueue(handle, transaction, root, sdp_type, sdp);
+
+    return janus_plugin_result_new(JANUS_PLUGIN_OK_WAIT, NULL);
+}
+
+janus_plugin_result* Plugin::handleMessageError(janus_plugin_session *handle, char *transaction, char* message,
+                                        json_t *root, char *sdp_type, char *sdp, char* error)
+{
+    if(root != NULL) json_decref(root);
+    free(transaction);
+    free(message);
+    free(sdp_type);
+    free(sdp);
+
+    /* Prepare JSON error event */
+    json_t *event = json_object();
+    json_object_set_new(event, "ultrasound", json_string("event"));
+    json_object_set_new(event, "error", json_string(error));
+    char *event_text = json_dumps(event, JSON_INDENT(3) | JSON_PRESERVE_ORDER);
+    json_decref(event);
+    janus_plugin_result *result = janus_plugin_result_new(JANUS_PLUGIN_OK, event_text);
+    free(event_text);
+    return result;
+}
+
+void Plugin::addMessageToQueue(janus_plugin_session *handle, char *transaction, json_t *root, char *sdp_type, char *sdp) {
+    janus_ultrasound_message *msg = g_malloc0(sizeof(janus_ultrasound_message));
+    msg->handle = handle;
+    msg->transaction = transaction;
+    msg->message = root;
+    msg->sdp_type = sdp_type;
+    msg->sdp = sdp;
+
+    g_async_queue_push(messages, msg);
+}
+
+janus_plugin_result* janus_ultrasound_handle_message(janus_plugin_session *handle, char *transaction, char *message, char *sdp_type, char *sdp) {
+    return Plugin::onMessage(handle, transaction, message, sdp_type, sdp);
+}
 
 void janus_ultrasound_incoming_data(janus_plugin_session *handle, char* buffer, int length) {
     Plugin::incomingData(handle, buffer, length);
@@ -1041,35 +899,3 @@ void Plugin::incomingData(janus_plugin_session *handle, char* buffer, int length
     free(msg);
 }
 
-char* createSDP(RTPSource* mp) {
-    gint64 sessid = janus_get_real_time();
-    gint64 version = sessid;
-    std::string general = str(boost::format("%s\r\n%s\r\n%s\r\n%s\r\n") %
-        "v=0" %
-        str(boost::format("o=- %llu %llu IN IP4 127.0.0.1") % sessid % version) %
-        "s=Streaming Test" %
-        "t=0 0"
-    );
-
-    std::string video = "";
-    if(mp->codecs.video_pt >= 0) {
-        video = str(boost::format("%s\r\n%s\r\n%s\r\n%s\r\n%s\r\n%s\r\n") %
-            str(boost::format("m=video 1 RTP/SAVPF %d") % mp->codecs.video_pt) %
-            "c=IN IP4 1.1.1.1" %
-            str(boost::format("a=rtpmap:%d %s") % mp->codecs.video_pt % mp->codecs.video_rtpmap) %
-            str(boost::format("a=rtcp-fb:%d nack") % mp->codecs.video_pt) %
-            str(boost::format("a=rtcp-fb:%d goog-remb") % mp->codecs.video_pt) %
-            "a=sendonly"
-        );
-    }
-
-    std::string data = str(boost::format("%s\r\n%s\r\n%s\r\n") %
-       "m=application 1 DTLS/SCTP 5000" %
-       "c=IN IP4 1.1.1.1" %
-       "a=sctpmap:5000 webrtc-datachannel 16"
-    );
-
-    std::string sdp = general + video + data;
-
-    return strdup(sdp.c_str());
-}
