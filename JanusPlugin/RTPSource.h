@@ -14,6 +14,12 @@
 
 #include "janus_ultrasound.h"
 
+typedef struct janus_ultrasound_codecs {
+    gint video_codec;
+    gint video_pt;
+    char *video_rtpmap;
+} janus_ultrasound_codecs;
+
 class RTPSource {
 
 public:

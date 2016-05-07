@@ -2,21 +2,18 @@
 #define JANUS_ULTRASOUND_H
 
 #include <jansson.h>
+#include "RTPSource.h"
 
+class RTPSource;
 
 extern "C" {
 #include <janus/plugin.h>
 }
 
-typedef struct janus_ultrasound_codecs {
-    gint video_codec;
-    gint video_pt;
-    char *video_rtpmap;
-    char *video_fmtp;
-} janus_ultrasound_codecs;
-
-#include "RTPSource.h"
-
+/* Useful stuff */
+static volatile gint initialized = 0, stopping = 0;
+static janus_callbacks *gateway = NULL;
+static GThread *handler_thread;
 typedef struct janus_ultrasound_message {
     janus_plugin_session *handle;
     char *transaction;
@@ -32,6 +29,7 @@ typedef struct janus_ultrasound_context {
 } janus_ultrasound_context;
 
 typedef struct janus_ultrasound_session {
+    janus_callbacks* gateway;
     janus_plugin_session *handle;
     RTPSource* mountpoint;
     gboolean started;
@@ -40,6 +38,18 @@ typedef struct janus_ultrasound_session {
     volatile gint hangingup;
     gint64 destroyed;	/* Time at which this session was marked as destroyed */
 } janus_ultrasound_session;
+
+/* Error codes */
+#define JANUS_ULTRASOUND_ERROR_NO_MESSAGE			450
+#define JANUS_ULTRASOUND_ERROR_INVALID_JSON			451
+#define JANUS_ULTRASOUND_ERROR_INVALID_REQUEST		452
+#define JANUS_ULTRASOUND_ERROR_MISSING_ELEMENT		453
+#define JANUS_ULTRASOUND_ERROR_INVALID_ELEMENT		454
+#define JANUS_ULTRASOUND_ERROR_NO_SUCH_MOUNTPOINT	455
+#define JANUS_ULTRASOUND_ERROR_CANT_CREATE			456
+#define JANUS_ULTRASOUND_ERROR_UNAUTHORIZED			457
+#define JANUS_ULTRASOUND_ERROR_CANT_SWITCH			458
+#define JANUS_ULTRASOUND_ERROR_UNKNOWN_ERROR		470
 
 
 class Plugin {

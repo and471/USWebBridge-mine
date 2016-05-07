@@ -46,6 +46,7 @@ set (SRCS
     JanusUltrasoundSession.cpp
     RTPSource.cpp
     plugin_hooks.cpp
+    rtp_functions.cpp
 )
 
 ADD_LIBRARY(janus_ultrasound SHARED

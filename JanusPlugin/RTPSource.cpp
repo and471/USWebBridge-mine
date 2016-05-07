@@ -50,8 +50,7 @@ RTPSource::~RTPSource() {
         close(video_fd);
     }
 
-	free(codecs.video_rtpmap);
-	free(codecs.video_fmtp);
+    free(codecs.video_rtpmap);
 }
 
 
