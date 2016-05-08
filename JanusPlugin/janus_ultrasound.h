@@ -5,6 +5,7 @@
 using json = nlohmann::json;
 
 #include "RTPSource.h"
+#include <thread>
 
 class RTPSource;
 
@@ -15,7 +16,7 @@ extern "C" {
 /* Useful stuff */
 static volatile gint initialized = 0, stopping = 0;
 static janus_callbacks *gateway = NULL;
-static GThread *handler_thread;
+
 
 
 typedef struct janus_ultrasound_context {
@@ -88,7 +89,7 @@ public:
 RTPSource* janus_ultrasound_create_rtp_source(uint64_t id, char *name, uint16_t vport,
                                               uint8_t vcodec, char *vrtpmap);
 /* Useful stuff */
-static void *janus_ultrasound_handler(void *data);
+void messageHandlerThread();
 void janus_ultrasound_message_free(Message *msg);
 
 #endif

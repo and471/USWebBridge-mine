@@ -33,6 +33,9 @@ using json = nlohmann::json;
 #include "auth/DummyAuthenticator.h"
 #include "auth/SimpleAuthenticator.h"
 
+#include <mutex>
+#include <queue>
+
 //TODO: move static functions into a class and make below members
 
 static JanusUltrasoundSessionManager* session_manager;
@@ -44,7 +47,9 @@ janus_mutex mountpoints_mutex;
 static GHashTable *sessions;
 static janus_mutex sessions_mutex;
 
-static GAsyncQueue *messages = NULL;
+std::queue<Message*> messages;
+std::mutex messages_mutex;
+std::thread* handler_thread;
 
 
 /* Plugin creator */
@@ -65,14 +70,13 @@ int janus_ultrasound_init(janus_callbacks *callback, const char *config_path) {
 
     sessions = g_hash_table_new(NULL, NULL);
     janus_mutex_init(&sessions_mutex);
-    messages = g_async_queue_new_full((GDestroyNotify) janus_ultrasound_message_free);
     /* This is the callback we'll need to invoke to contact the gateway */
     gateway = callback;
     g_atomic_int_set(&initialized, 1);
 
 
     /* Launch the thread that will handle incoming messages */
-    g_thread_try_new("janus ultrasound handler", janus_ultrasound_handler, NULL, NULL);
+    handler_thread = new std::thread(janus_ultrasound_handler);
 
     session_manager = new JanusUltrasoundSessionManager(gateway);
     authenticator = new SimpleAuthenticator();
@@ -87,9 +91,9 @@ void janus_ultrasound_destroy(void) {
 		return;
 	g_atomic_int_set(&stopping, 1);
 
-    if(handler_thread != NULL) {
-        g_thread_join(handler_thread);
-        handler_thread = NULL;
+    if(handler_thread->joinable()) {
+        handler_thread->join();
+        handler_thread = nullptr;
     }
 
 	/* Remove all mountpoints */
@@ -110,8 +114,9 @@ void janus_ultrasound_destroy(void) {
 	janus_mutex_lock(&sessions_mutex);
 	g_hash_table_destroy(sessions);
 	janus_mutex_unlock(&sessions_mutex);
-	g_async_queue_unref(messages);
-	messages = NULL;
+
+    while(!messages.empty()) messages.pop();
+
 	sessions = NULL;
 
 
@@ -245,15 +250,28 @@ janus_plugin_result* Plugin::onMessage(janus_plugin_session *handle, char *trans
 
 void Plugin::addMessageToQueue(janus_plugin_session *handle, char *transaction, json root, char *sdp_type, char *sdp) {
     Message *msg = new Message(handle, transaction, root, sdp, sdp_type);
-    g_async_queue_push(messages, msg);
+
+    std::unique_lock<std::mutex> lock(messages_mutex);
+    // Lock
+    messages.push(msg);
+    // Unlock
 }
 
 
 /* Thread to handle incoming messages */
-static void* janus_ultrasound_handler(void *data) {
+void janus_ultrasound_handler() {
 
     while(g_atomic_int_get(&initialized) && !g_atomic_int_get(&stopping)) {
-        Message *msg = g_async_queue_pop(messages);
+
+        Message *msg;
+        {
+            std::unique_lock<std::mutex> lock(messages_mutex);
+            // Lock
+            if (messages.empty()) continue;
+            msg = messages.front();
+            messages.pop();
+            // Unlock
+        }
 
         // Ignore empty messages
         if (msg->message == NULL) {
@@ -322,8 +340,6 @@ void Plugin::handleMessageWatch(janus_ultrasound_session *session, Message* msg)
         vcodec,
         vrtpmap
     );
-
-    mp->secret = g_strdup(secret);
 
     session->stopping = FALSE;
     session->mountpoint = mp;
