@@ -16,6 +16,7 @@ DNLFileFrameSource::DNLFileFrameSource(std::string &folder) {
 }
 
 DNLFileFrameSource::~DNLFileFrameSource() {
+    stop();
     filenames.clear();
 }
 
@@ -57,6 +58,8 @@ void DNLFileFrameSource::GenerateImagesThread() {
 }
 
 void DNLFileFrameSource::stop() {
+    if (this->stop_image_generation) return;
+
     this->stop_image_generation = true;
     if (this->thread->joinable()){
         this->thread->join();

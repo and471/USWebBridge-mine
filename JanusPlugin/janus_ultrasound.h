@@ -14,13 +14,7 @@ extern "C" {
 static volatile gint initialized = 0, stopping = 0;
 static janus_callbacks *gateway = NULL;
 static GThread *handler_thread;
-typedef struct janus_ultrasound_message {
-    janus_plugin_session *handle;
-    char *transaction;
-    json_t *message;
-    char *sdp_type;
-    char *sdp;
-} janus_ultrasound_message;
+
 
 typedef struct janus_ultrasound_context {
     /* Needed to fix seq and ts in case of stream switching */
@@ -52,6 +46,19 @@ typedef struct janus_ultrasound_session {
 #define JANUS_ULTRASOUND_ERROR_UNKNOWN_ERROR		470
 
 
+class Message {
+
+public:
+    Message(janus_plugin_session* handle, char *transaction, json_t *message, char *sdp, char *sdp_type);
+    ~Message();
+
+    janus_plugin_session *handle;
+    char *transaction;
+    json_t *message;
+    char *sdp;
+    char *sdp_type;
+};
+
 class Plugin {
 
 public:
@@ -67,12 +74,19 @@ public:
                                             char *transaction, char* message,
                                             json_t *root, char *sdp_type, char *sdp, char* error);
 
-    static void handleMessageReady(janus_ultrasound_session *session, janus_ultrasound_message* msg, json_t* root);
-    static void handleMessageWatch(janus_ultrasound_session *session, janus_ultrasound_message* msg, json_t* root);
-    static void handleMessageStart(janus_ultrasound_session *session, janus_ultrasound_message* msg, json_t* root);
-    static void handleMessageStop(janus_ultrasound_session* session, janus_ultrasound_message* msg, json_t* root);
+    static void handleMessageReady(janus_ultrasound_session *session, Message* msg, json_t* root);
+    static void handleMessageWatch(janus_ultrasound_session *session, Message* msg, json_t* root);
+    static void handleMessageStart(janus_ultrasound_session *session, Message* msg, json_t* root);
+    static void handleMessageStop(janus_ultrasound_session* session, Message* msg, json_t* root);
 
-    static void sendPostMessageEvent(json_t* result, janus_ultrasound_message* msg, char* sdp, char* sdp_type);
+    static void sendPostMessageEvent(json_t* result, Message* msg, char* sdp, char* sdp_type);
 };
+
+/* Helper to create an RTP live source (e.g., from gstreamer/ffmpeg/vlc/etc.) */
+RTPSource* janus_ultrasound_create_rtp_source(uint64_t id, char *name, uint16_t vport,
+                                              uint8_t vcodec, char *vrtpmap);
+/* Useful stuff */
+static void *janus_ultrasound_handler(void *data);
+void janus_ultrasound_message_free(Message *msg);
 
 #endif

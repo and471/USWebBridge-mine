@@ -42,7 +42,7 @@ SET(LIBS ${LIBS} ${VTK_LIBRARIES})
 
 set (SRCS
     janus_ultrasound.cpp
-    JanusUltrasoundPlugin.cpp
+    JanusUltrasoundSessionManager.cpp
     JanusUltrasoundSession.cpp
     RTPSource.cpp
     plugin_hooks.cpp

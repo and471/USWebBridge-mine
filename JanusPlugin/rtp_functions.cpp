@@ -24,7 +24,6 @@ extern "C" {
 #include "janus_ultrasound.h"
 
 
-/* Helpers to create a listener filedescriptor */
 int create_fd(int port, in_addr_t mcast, const char* listenername, const char* medianame, const char* mountpointname) {
 	struct sockaddr_in address;
 	int fd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -66,7 +65,6 @@ int create_fd(int port, in_addr_t mcast, const char* listenername, const char* m
 }
 
 
-/* FIXME Test thread to relay RTP frames coming from gstreamer/ffmpeg/others */
 void* relay_rtp_thread(void *data) {
 	JANUS_LOG(LOG_VERB, "Starting ultrasound relay thread\n");
     RTPSource* mountpoint = (RTPSource*) data;

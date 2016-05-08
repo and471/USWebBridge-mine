@@ -8,11 +8,11 @@
 #include "JanusUltrasoundSession.h"
 
 
-class JanusUltrasoundPlugin
+class JanusUltrasoundSessionManager
 {
 public:
-    JanusUltrasoundPlugin(janus_callbacks* gateway);
-    ~JanusUltrasoundPlugin();
+    JanusUltrasoundSessionManager(janus_callbacks* gateway);
+    ~JanusUltrasoundSessionManager();
 
     void newSession(janus_plugin_session* handle);
     void destroySession(janus_plugin_session* handle);
