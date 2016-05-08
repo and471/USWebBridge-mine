@@ -1,7 +1,9 @@
 #ifndef JANUS_ULTRASOUND_H
 #define JANUS_ULTRASOUND_H
 
-#include <jansson.h>
+#include <json.hpp>
+using json = nlohmann::json;
+
 #include "RTPSource.h"
 
 class RTPSource;
@@ -49,12 +51,12 @@ typedef struct janus_ultrasound_session {
 class Message {
 
 public:
-    Message(janus_plugin_session* handle, char *transaction, json_t *message, char *sdp, char *sdp_type);
+    Message(janus_plugin_session* handle, char *transaction, json message, char *sdp, char *sdp_type);
     ~Message();
 
     janus_plugin_session *handle;
     char *transaction;
-    json_t *message;
+    json message;
     char *sdp;
     char *sdp_type;
 };
@@ -68,18 +70,18 @@ public:
         char *transaction, char *message, char *sdp_type, char *sdp);
 
     static void addMessageToQueue(janus_plugin_session *handle, char *transaction,
-                                  json_t *root, char *sdp_type, char *sdp);
+                                  json root, char *sdp_type, char *sdp);
 
     static janus_plugin_result* handleMessageError(janus_plugin_session *handle,
                                             char *transaction, char* message,
-                                            json_t *root, char *sdp_type, char *sdp, char* error);
+                                            json root, char *sdp_type, char *sdp, char* error);
 
-    static void handleMessageReady(janus_ultrasound_session *session, Message* msg, json_t* root);
-    static void handleMessageWatch(janus_ultrasound_session *session, Message* msg, json_t* root);
-    static void handleMessageStart(janus_ultrasound_session *session, Message* msg, json_t* root);
-    static void handleMessageStop(janus_ultrasound_session* session, Message* msg, json_t* root);
+    static void handleMessageReady(janus_ultrasound_session *session, Message* msg);
+    static void handleMessageWatch(janus_ultrasound_session *session, Message* msg);
+    static void handleMessageStart(janus_ultrasound_session *session, Message* msg);
+    static void handleMessageStop(janus_ultrasound_session* session, Message* msg);
 
-    static void sendPostMessageEvent(json_t* result, Message* msg, char* sdp, char* sdp_type);
+    static void sendPostMessageEvent(json result, Message* msg, char* sdp, char* sdp_type);
 };
 
 /* Helper to create an RTP live source (e.g., from gstreamer/ffmpeg/vlc/etc.) */

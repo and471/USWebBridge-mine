@@ -70,6 +70,7 @@ void GstUltrasoundImagePipeline::createGstPipeline() {
     videoenc->property("deadline", 1);
     videoenc->property("cpu-used", 4);
     videoenc->property("lag-in-frames", 0);
+    //videoenc->property("keyframe-max-dist", 128);
 
     //gst_preset_load_preset(GST_PRESET(videoenc), "Profile Realtime");
     udpsink->property<Glib::ustring>("host", "127.0.0.1");

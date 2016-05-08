@@ -15,6 +15,7 @@ extern "C" {
 #include <janus/utils.h>
 #include <janus/plugin.h>
 #include <poll.h>
+#include <jansson.h>
 }
 
 #include "plugin_hooks.h"

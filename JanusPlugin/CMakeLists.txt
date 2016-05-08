@@ -16,6 +16,9 @@ find_package(Boost COMPONENTS system filesystem thread date_time REQUIRED) # sys
 INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS})
 set(LIBS ${LIBS} ${Boost_LIBRARIES})
 
+# Find json.hpp
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
+
 # Find Gstreamermm
 pkg_check_modules(GSTMM REQUIRED gstreamermm-1.0)
 include_directories(${GSTMM_INCLUDE_DIRS})
@@ -47,6 +50,9 @@ set (SRCS
     RTPSource.cpp
     plugin_hooks.cpp
     rtp_functions.cpp
+    auth/Authenticator.h
+    auth/SimpleAuthenticator.cpp
+    auth/DummyAuthenticator.cpp
 )
 
 ADD_LIBRARY(janus_ultrasound SHARED

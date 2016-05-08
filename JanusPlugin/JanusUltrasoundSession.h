@@ -3,7 +3,9 @@
 
 #include <janus/plugin.h>
 #include <functional>
-#include <jansson.h>
+
+#include <json.hpp>
+using json = nlohmann::json;
 
 #include <USPipelineInterface/PatientMetadata.h>
 #include <USPipelineInterface/FrameSource.h>
@@ -21,10 +23,11 @@ public:
     JanusUltrasoundSession(janus_callbacks* gateway, janus_plugin_session* handle);
     ~JanusUltrasoundSession();
 
-    void sendMethod(json_t* data, std::string method);
-    void sendData(json_t* obj);
     void onDataReceived(char* data);
     int getPort();
+
+    void sendMethod(json data, std::string method);
+    void sendData(json obj);
 
     // Virtual methods
     void start();

@@ -15,28 +15,23 @@ extern "C" {
 #include <janus/plugin.h>
 }
 
+#include <jansson.h>
 #include <errno.h>
 #include <sys/poll.h>
 #include <sys/time.h>
 #include <boost/format.hpp>
 #include <USPipelineInterface/UltrasoundImagePipeline.h>
 
-#include <json.hpp>
-using json = nlohmann::json;
-
 #include "plugin_hooks.h"
 #include "janus_ultrasound.h"
 #include "RTPSource.h"
 #include "rtp_functions.h"
 #include "JanusUltrasoundSessionManager.h"
-#include "auth/Authenticator.h"
-#include "auth/DummyAuthenticator.h"
-#include "auth/SimpleAuthenticator.h"
+
 
 //TODO: move static functions into a class and make below members
 
 static JanusUltrasoundSessionManager* session_manager;
-static Authenticator* authenticator;
 
 GHashTable *mountpoints;
 janus_mutex mountpoints_mutex;
@@ -75,7 +70,6 @@ int janus_ultrasound_init(janus_callbacks *callback, const char *config_path) {
     g_thread_try_new("janus ultrasound handler", janus_ultrasound_handler, NULL, NULL);
 
     session_manager = new JanusUltrasoundSessionManager(gateway);
-    authenticator = new SimpleAuthenticator();
 
     JANUS_LOG(LOG_INFO, "%s initialized!\n", JANUS_ULTRASOUND_NAME);
 
@@ -198,15 +192,16 @@ char *janus_ultrasound_query_session(janus_plugin_session *handle) {
 		return NULL;
 	}
 	/* What is this user watching, if anything? */
-    json info;
-    info["state"] = session->mountpoint ? "watching" : "idle";
+	json_t *info = json_object();
+	json_object_set_new(info, "state", json_string(session->mountpoint ? "watching" : "idle"));
 	if(session->mountpoint) {
-        info["mountpoint_id"] = session->mountpoint->id;
-        info["mountpoint_name"] = session->mountpoint->name ? session->mountpoint->name : nullptr;
+		json_object_set_new(info, "mountpoint_id", json_integer(session->mountpoint->id));
+		json_object_set_new(info, "mountpoint_name", session->mountpoint->name ? json_string(session->mountpoint->name) : NULL);
 	}
-    info["destroyed"] = session->destroyed;
-    std::string info_text = info.dump(info);
-    return info_text.c_str();
+	json_object_set_new(info, "destroyed", json_integer(session->destroyed));
+	char *info_text = json_dumps(info, JSON_INDENT(3) | JSON_PRESERVE_ORDER);
+	json_decref(info);
+	return info_text;
 }
 
 janus_plugin_result* Plugin::onMessage(janus_plugin_session *handle, char *transaction,
@@ -224,16 +219,13 @@ janus_plugin_result* Plugin::onMessage(janus_plugin_session *handle, char *trans
         return Plugin::handleMessageError(handle, transaction, message, NULL, sdp_type, sdp, "Empty message");
     }
 
-    json root;
-    try {
-        root = json::parse(message);
-    } catch (std::invalid_argument e) {
+    json_t *root = json_loads(message, 0, NULL);
+    if(!root || !json_is_object(root)) {
         return Plugin::handleMessageError(handle, transaction, message, root, sdp_type, sdp, "JSON Error");
     }
 
-    try {
-        std::string request = root["request"];
-    } catch (std::domain_error e) {
+    json_t *request = json_object_get(root, "request");
+    if(!request || !json_is_string(request)) {
         return Plugin::handleMessageError(handle, transaction, message, root, sdp_type, sdp, "Missing element (request)");
     }
 
@@ -243,7 +235,7 @@ janus_plugin_result* Plugin::onMessage(janus_plugin_session *handle, char *trans
 }
 
 
-void Plugin::addMessageToQueue(janus_plugin_session *handle, char *transaction, json root, char *sdp_type, char *sdp) {
+void Plugin::addMessageToQueue(janus_plugin_session *handle, char *transaction, json_t *root, char *sdp_type, char *sdp) {
     Message *msg = new Message(handle, transaction, root, sdp, sdp_type);
     g_async_queue_push(messages, msg);
 }
@@ -267,25 +259,28 @@ static void* janus_ultrasound_handler(void *data) {
             continue;
         }
 
-        if(msg->message["request"] == "watch") {
-            Plugin::handleMessageWatch(session, msg);
-        } else if(msg->message["request"] == "ready") {
-            Plugin::handleMessageReady(session, msg);
-        } else if(msg->message["request"] == "start") {
-            Plugin::handleMessageStart(session, msg);
-        } else if(msg->message["request"] == "stop") {
-            Plugin::handleMessageStop(session, msg);
-        }   else {
-            JANUS_LOG(LOG_VERB, "Unknown request '%s'\n", msg->message["request"]);
+        json_t* root = msg->message;
+        char* request_text = json_string_value(json_object_get(root, "request"));
 
-            json event;
-            event["ultrasound"] = "event";
-            event["error"] = "Unknown Request";
+        if(!strcasecmp(request_text, "watch")) {
+            Plugin::handleMessageWatch(session, msg, root);
+        } else if(!strcasecmp(request_text, "ready")) {
+            Plugin::handleMessageReady(session, msg, root);
+        } else if(!strcasecmp(request_text, "start")) {
+            Plugin::handleMessageStart(session, msg, root);
+        } else if(!strcasecmp(request_text, "stop")) {
+            Plugin::handleMessageStop(session, msg, root);
+        } else {
+            JANUS_LOG(LOG_VERB, "Unknown request '%s'\n", request_text);
 
-            std::string event_str = event.dump();
+            json_t* event = json_object();
+            json_object_set_new(event, "ultrasound", json_string("event"));
+            json_object_set_new(event, "error", json_string("Unknown request"));
+            char *event_text = json_dumps(event, 0);
+            json_decref(event);
 
-            gateway->push_event(msg->handle, &janus_ultrasound_plugin,
-                                msg->transaction, event_str.c_str(), NULL, NULL);
+            gateway->push_event(msg->handle, &janus_ultrasound_plugin, msg->transaction, event_text, NULL, NULL);
+            g_free(event_text);
             delete msg;
         }
     }
@@ -293,27 +288,17 @@ static void* janus_ultrasound_handler(void *data) {
 }
 
 
-void Plugin::handleMessageWatch(janus_ultrasound_session *session, Message* msg) {
+void Plugin::handleMessageWatch(janus_ultrasound_session *session, Message* msg, json_t* root) {
 
     /* RTP live source (e.g., from gstreamer/ffmpeg/vlc/etc.) */
     char* desc = "ULTRASOUND";
+    char* secret = "";
     int pin = 0;
     int vport = session_manager->getSessionPort(msg->handle);
     int vcodec = 100;
     char* vrtpmap = "VP8/90000";
     gboolean is_private = false;
 
-    if (!authenticator->isValid(msg->message["auth"])) {
-        json event;
-        event["ultrasound"] = "event";
-        event["error"] = "Authentication failed";
-
-        std::string event_str = event.dump();
-        gateway->push_event(msg->handle, &janus_ultrasound_plugin, msg->transaction,
-                            event_str.c_str(), NULL, NULL);
-        delete msg;
-        return;
-    }
 
     RTPSource* mp = janus_ultrasound_create_rtp_source(
         1,
@@ -336,23 +321,23 @@ void Plugin::handleMessageWatch(janus_ultrasound_session *session, Message* msg)
 
     char* sdp = mp->createSDP();
 
-    json result;
-    result["status"] = "preparing";
+    json_t* result = json_object();
+    json_object_set_new(result, "status", json_string("preparing"));
 
     Plugin::sendPostMessageEvent(result, msg, sdp, sdp_type);
 }
 
 
-void Plugin::handleMessageStart(janus_ultrasound_session *session, Message* msg) {
+void Plugin::handleMessageStart(janus_ultrasound_session *session, Message* msg, json_t* root) {
     JANUS_LOG(LOG_VERB, "Starting the ultrasound\n");
-    json result;
+    json_t* result = json_object();
     /* We wait for the setup_media event to start: on the other hand, it may have already arrived */
-    result["status"] = session->started ? "started" : "starting";
+    json_object_set_new(result, "status", json_string(session->started ? "started" : "starting"));
     Plugin::sendPostMessageEvent(result, msg, NULL, NULL);
 }
 
 
-void Plugin::handleMessageStop(janus_ultrasound_session *session, Message *msg) {
+void Plugin::handleMessageStop(janus_ultrasound_session *session, Message *msg, json_t *root) {
     if(session->stopping || !session->started) {
         delete msg;
         return;
@@ -360,9 +345,8 @@ void Plugin::handleMessageStop(janus_ultrasound_session *session, Message *msg) 
     JANUS_LOG(LOG_VERB, "Stopping the ultrasound\n");
     session->stopping = TRUE;
     session->started = FALSE;
-
-    json result;
-    result["status"] = "stopping";
+    json_t* result = json_object();
+    json_object_set_new(result, "status", json_string("stopping"));
     if(session->mountpoint) {
         janus_mutex_lock(&session->mountpoint->mutex);
         JANUS_LOG(LOG_VERB, "  -- Removing the session from the mountpoint listeners\n");
@@ -378,41 +362,46 @@ void Plugin::handleMessageStop(janus_ultrasound_session *session, Message *msg) 
     Plugin::sendPostMessageEvent(result, msg, NULL, NULL);
 }
 
-void Plugin::handleMessageReady(janus_ultrasound_session *session, Message* msg) {
+void Plugin::handleMessageReady(janus_ultrasound_session *session, Message* msg, json_t* root) {
     session_manager->onSessionReady(msg->handle);
 }
 
 janus_plugin_result* Plugin::handleMessageError(janus_plugin_session *handle, char *transaction, char* message,
-                                        json root, char *sdp_type, char *sdp, char* error)
+                                        json_t *root, char *sdp_type, char *sdp, char* error)
 {
+    if(root != NULL) json_decref(root);
     free(transaction);
     free(message);
     free(sdp_type);
     free(sdp);
 
     /* Prepare JSON error event */
-    json event;
-    event["ultrasound"] = "event";
-    event["error"] = error;
-
-
-    std::string event_str = event.dump();
-    return janus_plugin_result_new(JANUS_PLUGIN_OK, event_str.c_str());
+    json_t *event = json_object();
+    json_object_set_new(event, "ultrasound", json_string("event"));
+    json_object_set_new(event, "error", json_string(error));
+    char *event_text = json_dumps(event, JSON_INDENT(3) | JSON_PRESERVE_ORDER);
+    json_decref(event);
+    janus_plugin_result *result = janus_plugin_result_new(JANUS_PLUGIN_OK, event_text);
+    free(event_text);
+    return result;
 }
 
-void Plugin::sendPostMessageEvent(json result, Message* msg, char* sdp, char* sdp_type)
+void Plugin::sendPostMessageEvent(json_t* result, Message* msg,
+                                  char* sdp, char* sdp_type)
 {
     /* Prepare JSON event */
-    json event;
-    event["ultrasound"] = "event";
+    json_t *event = json_object();
+    json_object_set_new(event, "ultrasound", json_string("event"));
     if(result != NULL)
-        event["result"] = result;
-
-    std::string event_str = event.dump();
-    gateway->push_event(msg->handle, &janus_ultrasound_plugin, msg->transaction,
-                        event_str.c_str(), sdp_type, sdp);
-
-    if (sdp) free(sdp);
+        json_object_set_new(event, "result", result);
+    char *event_text = json_dumps(event, JSON_INDENT(3) | JSON_PRESERVE_ORDER);
+    json_decref(event);
+    JANUS_LOG(LOG_VERB, "Pushing event: %s\n", event_text);
+    int ret = gateway->push_event(msg->handle, &janus_ultrasound_plugin, msg->transaction, event_text, sdp_type, sdp);
+    JANUS_LOG(LOG_VERB, "  >> %d (%s)\n", ret, janus_get_api_error(ret));
+    g_free(event_text);
+    if(sdp)
+        g_free(sdp);
     delete msg;
 }
 
@@ -471,12 +460,18 @@ void janus_ultrasound_setup_media(janus_plugin_session *handle) {
 
     session->started = TRUE;
     /* Prepare JSON event */
-    json event;
-    event["ultrasound"] = "event";
-    event["result"]["status"] = "started";
+    json_t *event = json_object();
+    json_object_set_new(event, "ultrasound", json_string("event"));
+    json_t *result = json_object();
+    json_object_set_new(result, "status", json_string("started"));
+    json_object_set_new(event, "result", result);
+    char *event_text = json_dumps(event, JSON_INDENT(3) | JSON_PRESERVE_ORDER);
+    json_decref(event);
+    JANUS_LOG(LOG_VERB, "Pushing event: %s\n", event_text);
+    int ret = gateway->push_event(handle, &janus_ultrasound_plugin, NULL, event_text, NULL, NULL);
+    JANUS_LOG(LOG_VERB, "  >> %d (%s)\n", ret, janus_get_api_error(ret));
+    g_free(event_text);
 
-    std::string event_str = event.dump();
-    gateway->push_event(handle, &janus_ultrasound_plugin, NULL, event_str.c_str(), NULL, NULL);
 }
 
 
@@ -490,7 +485,7 @@ void janus_ultrasound_hangup_media(janus_plugin_session *handle) {
     }
 
     /* Simulate a "stop" coming from the browser */
-    Plugin::addMessageToQueue(handle, NULL, json::parse("{\"request\":\"stop\"}"), NULL, NULL);
+    Plugin::addMessageToQueue(handle, NULL, json_loads("{\"request\":\"stop\"}", 0, NULL), NULL, NULL);
 }
 
 
@@ -551,7 +546,7 @@ janus_plugin_result* janus_ultrasound_handle_message(janus_plugin_session *handl
 }
 
 
-Message::Message(janus_plugin_session* handle, char *transaction, json message, char *sdp, char *sdp_type) {
+Message::Message(janus_plugin_session* handle, char *transaction, json_t *message, char *sdp, char *sdp_type) {
     this->handle = handle;
     this->transaction = transaction;
     this->message = message;
@@ -561,6 +556,7 @@ Message::Message(janus_plugin_session* handle, char *transaction, json message, 
 
 Message::~Message() {
     if (transaction) free(transaction);
+    if (message) json_decref(message);
     if (sdp_type) free(sdp_type);
     if (sdp) free(sdp);
 }
