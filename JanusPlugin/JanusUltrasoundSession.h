@@ -11,6 +11,7 @@ using json = nlohmann::json;
 #include <USPipelineInterface/FrameSource.h>
 #include <USPipelineInterface/UltrasoundImagePipeline.h>
 #include <USPipelineInterface/UltrasoundController.h>
+#include "RTPSource.h"
 
 #include "plugin_hooks.h"
 
@@ -25,9 +26,15 @@ public:
 
     void onDataReceived(char* data);
     int getPort();
-
     void sendMethod(json data, std::string method);
     void sendData(json obj);
+
+    void handleMessageReady(Message* msg);
+    void handleMessageWatch(Message* msg);
+    void handleMessageStart(Message* msg);
+    void handleMessageStop(Message* msg);
+
+    void tearDownPeerConnection();
 
     // Virtual methods
     void start();
@@ -38,11 +45,20 @@ public:
     void setOnSetSliceCallback(std::function<void(int)> cb);
     void setPipeline(UltrasoundImagePipeline* pipeline);
 
-private:
-    janus_callbacks* gateway;
-    janus_plugin_session* handle;
+
+    RTPSource* mountpoint;
+
+    janus_ultrasound_context context;
+    gboolean stopping;
+    volatile gint hangingup;
+    gint64 destroyed;
     bool started = false;
 
+    janus_callbacks* gateway;
+    janus_plugin_session* handle;
+
+private:
+    bool pipeline_started = false;
     std::function<void(int)> onSetSliceCallback;
 
 };

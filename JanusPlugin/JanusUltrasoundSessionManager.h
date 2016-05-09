@@ -6,6 +6,7 @@
 
 #include "plugin_hooks.h"
 #include "JanusUltrasoundSession.h"
+#include <mutex>
 
 
 class JanusUltrasoundSessionManager
@@ -14,10 +15,10 @@ public:
     JanusUltrasoundSessionManager(janus_callbacks* gateway);
     ~JanusUltrasoundSessionManager();
 
-    void newSession(janus_plugin_session* handle);
+    void addSession(JanusUltrasoundSession* session, janus_plugin_session* handle);
     void destroySession(janus_plugin_session* handle);
     void onSessionReady(janus_plugin_session* handle);
-    int getSessionPort(janus_plugin_session* handle);
+    JanusUltrasoundSession* getSession(janus_plugin_session* handle);
 
     void onDataReceived(janus_plugin_session* handle, char* msg);
 
@@ -28,6 +29,8 @@ public:
 private:
     FrameSource* frame_source;
     janus_callbacks* gateway;
+
+    std::mutex sessions_mutex;
     std::map<janus_plugin_session*, JanusUltrasoundSession*> sessions;
 };
 

@@ -6,29 +6,33 @@
 
 using namespace std::placeholders;
 
-JanusUltrasoundSessionManager::JanusUltrasoundSessionManager(janus_callbacks* gateway)
-{
-    this->gateway = gateway;
-    frame_source = createFrameSource();
-}
 
 JanusUltrasoundSessionManager::~JanusUltrasoundSessionManager() {
     delete frame_source;
+
+    {
+        // Remove all sessions
+        std::unique_lock<std::mutex> lock(sessions_mutex);
+        for (auto entry : sessions) {
+            delete entry.second;
+        }
+        sessions.clear();
+    }
 }
 
-void JanusUltrasoundSessionManager::newSession(janus_plugin_session* handle) {
-    JanusUltrasoundSession* session = new JanusUltrasoundSession(gateway, handle);
+void JanusUltrasoundSessionManager::addSession(JanusUltrasoundSession* session, janus_plugin_session* handle) {
     UltrasoundImagePipeline* pipeline = createPipeline(session);
     session->setPipeline(pipeline);
-
     sessions[handle] = session;
 }
 
 void JanusUltrasoundSessionManager::destroySession(janus_plugin_session* handle) {
     sessions[handle]->stop();
-    delete sessions[handle];
-    sessions.erase(handle);
-    int p = 0;
+    {
+        std::unique_lock<std::mutex> lock(sessions_mutex);
+        delete sessions[handle];
+        sessions.erase(handle);
+    }
 }
 
 void JanusUltrasoundSessionManager::onSessionReady(janus_plugin_session* handle) {
@@ -39,8 +43,8 @@ void JanusUltrasoundSessionManager::onDataReceived(janus_plugin_session* handle,
     sessions[handle]->onDataReceived(msg);
 }
 
-int JanusUltrasoundSessionManager::getSessionPort(janus_plugin_session* handle) {
-    return sessions[handle]->getPort();
+JanusUltrasoundSession* JanusUltrasoundSessionManager::getSession(janus_plugin_session* handle) {
+    return sessions[handle];
 }
 
 FrameSource* JanusUltrasoundSessionManager::createFrameSource() {

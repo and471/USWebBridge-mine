@@ -19,6 +19,7 @@ extern "C" {
 }
 
 #include "plugin_hooks.h"
+#include "JanusUltrasoundSession.h"
 
 #include "RTPSource.h"
 #include "rtp_functions.h"
@@ -168,29 +169,13 @@ void* relay_rtp_thread(void *data) {
 
 	/* Notify users this mountpoint is done */
 	janus_mutex_lock(&mountpoint->mutex);
-	GList *viewer = g_list_first(mountpoint->listeners);
-	/* Prepare JSON event */
-	json_t *event = json_object();
-	json_object_set_new(event, "ultrasound", json_string("event"));
-	json_t *result = json_object();
-	json_object_set_new(result, "status", json_string("stopped"));
-	json_object_set_new(event, "result", result);
-	char *event_text = json_dumps(event, JSON_INDENT(3) | JSON_PRESERVE_ORDER);
-	json_decref(event);
-	while(viewer) {
-		janus_ultrasound_session *session = (janus_ultrasound_session *)viewer->data;
-		if(session != NULL) {
-			session->stopping = TRUE;
-            session->started = FALSE;
-			session->mountpoint = NULL;
-			/* Tell the core to tear down the PeerConnection, hangup_media will do the rest */
-			gateway->push_event(session->handle, &janus_ultrasound_plugin, NULL, event_text, NULL, NULL);
-			gateway->close_pc(session->handle);
-		}
+    GList *viewer = g_list_first(mountpoint->listeners);
+    while (viewer) {
+        JanusUltrasoundSession* session = (JanusUltrasoundSession*) viewer->data;
+        session->tearDownPeerConnection();
 		mountpoint->listeners = g_list_remove_all(mountpoint->listeners, session);
 		viewer = g_list_first(mountpoint->listeners);
 	}
-	g_free(event_text);
 	janus_mutex_unlock(&mountpoint->mutex);
 
     delete mountpoint;
@@ -207,14 +192,10 @@ void relay_rtp_packet(gpointer data, gpointer user_data) {
         JANUS_LOG(LOG_ERR, "Invalid packet...\n");
         return;
     }
-    janus_ultrasound_session *session = (janus_ultrasound_session *)data;
-    if(!session || !session->handle) {
-        //~ JANUS_LOG(LOG_ERR, "Invalid session...\n");
-        return;
-    }
 
     /* Make sure there hasn't been a publisher switch by checking the SSRC */
 
+    JanusUltrasoundSession* session = (JanusUltrasoundSession*) data;
     if(ntohl(packet->data->ssrc) != session->context.v_last_ssrc) {
         session->context.v_last_ssrc = ntohl(packet->data->ssrc);
         session->context.v_base_ts_prev = session->context.v_last_ts;

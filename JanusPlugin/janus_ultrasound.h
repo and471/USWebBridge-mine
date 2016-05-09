@@ -17,24 +17,12 @@ extern "C" {
 static volatile gint initialized = 0, stopping = 0;
 static janus_callbacks *gateway = NULL;
 
-
-
 typedef struct janus_ultrasound_context {
     /* Needed to fix seq and ts in case of stream switching */
     uint32_t v_last_ssrc, v_last_ts, v_base_ts, v_base_ts_prev;
     uint16_t v_last_seq, v_base_seq, v_base_seq_prev;
 } janus_ultrasound_context;
 
-typedef struct janus_ultrasound_session {
-    janus_callbacks* gateway;
-    janus_plugin_session *handle;
-    RTPSource* mountpoint;
-    gboolean started;
-    janus_ultrasound_context context;
-    gboolean stopping;
-    volatile gint hangingup;
-    gint64 destroyed;	/* Time at which this session was marked as destroyed */
-} janus_ultrasound_session;
 
 /* Error codes */
 #define JANUS_ULTRASOUND_ERROR_NO_MESSAGE			450
@@ -77,10 +65,6 @@ public:
                                             char *transaction, char* message,
                                             json root, char *sdp_type, char *sdp, char* error);
 
-    static void handleMessageReady(janus_ultrasound_session *session, Message* msg);
-    static void handleMessageWatch(janus_ultrasound_session *session, Message* msg);
-    static void handleMessageStart(janus_ultrasound_session *session, Message* msg);
-    static void handleMessageStop(janus_ultrasound_session* session, Message* msg);
 
     static void sendPostMessageEvent(json result, Message* msg, char* sdp, char* sdp_type);
 };
@@ -90,6 +74,5 @@ RTPSource* janus_ultrasound_create_rtp_source(uint64_t id, char *name, uint16_t 
                                               uint8_t vcodec, char *vrtpmap);
 /* Useful stuff */
 void messageHandlerThread();
-void janus_ultrasound_message_free(Message *msg);
 
 #endif

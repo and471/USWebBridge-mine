@@ -35,17 +35,17 @@ using json = nlohmann::json;
 
 #include <mutex>
 #include <queue>
+#include <map>
 
 //TODO: move static functions into a class and make below members
 
 static JanusUltrasoundSessionManager* session_manager;
 static Authenticator* authenticator;
 
-GHashTable *mountpoints;
-janus_mutex mountpoints_mutex;
+std::map<int, RTPSource*> mountpoints;
+std::mutex mountpoints_mutex;
 
-static GHashTable *sessions;
-static janus_mutex sessions_mutex;
+int idCounter = 1;
 
 std::queue<Message*> messages;
 std::mutex messages_mutex;
@@ -58,150 +58,116 @@ janus_plugin *create(void) {
     return &janus_ultrasound_plugin;
 }
 
+JanusUltrasoundSessionManager::JanusUltrasoundSessionManager(janus_callbacks* gateway)
+{
+    this->gateway = gateway;
+    frame_source = createFrameSource();
+
+    g_atomic_int_set(&initialized, 1);
+
+    /* Launch the thread that will handle incoming messages */
+    handler_thread = new std::thread(messageHandlerThread);
+
+    authenticator = new SimpleAuthenticator();
+}
+
 /* Plugin implementation */
 int janus_ultrasound_init(janus_callbacks *callback, const char *config_path) {
     if(g_atomic_int_get(&stopping)) {
-        /* Still stopping from before */
         return -1;
     }
 
-    mountpoints = g_hash_table_new(NULL, NULL);
-    janus_mutex_init(&mountpoints_mutex);
-
-    sessions = g_hash_table_new(NULL, NULL);
-    janus_mutex_init(&sessions_mutex);
-    /* This is the callback we'll need to invoke to contact the gateway */
     gateway = callback;
-    g_atomic_int_set(&initialized, 1);
-
-
-    /* Launch the thread that will handle incoming messages */
-    handler_thread = new std::thread(janus_ultrasound_handler);
-
     session_manager = new JanusUltrasoundSessionManager(gateway);
-    authenticator = new SimpleAuthenticator();
-
-    JANUS_LOG(LOG_INFO, "%s initialized!\n", JANUS_ULTRASOUND_NAME);
 
     return 0;
 }
 
 void janus_ultrasound_destroy(void) {
-	if(!g_atomic_int_get(&initialized))
+    if(!g_atomic_int_get(&initialized))
 		return;
-	g_atomic_int_set(&stopping, 1);
+    g_atomic_int_set(&stopping, 1);
 
-    if(handler_thread->joinable()) {
+    if (handler_thread->joinable()) {
         handler_thread->join();
         handler_thread = nullptr;
     }
 
-	/* Remove all mountpoints */
-	janus_mutex_unlock(&mountpoints_mutex);
-	GHashTableIter iter;
-	gpointer value;
-	g_hash_table_iter_init(&iter, mountpoints);
-	while (g_hash_table_iter_next(&iter, NULL, &value)) {
-        delete (RTPSource*)value;
-	}
-	janus_mutex_unlock(&mountpoints_mutex);
 
-	/* FIXME We should destroy the sessions cleanly */
-	usleep(500000);
-	janus_mutex_lock(&mountpoints_mutex);
-	g_hash_table_destroy(mountpoints);
-	janus_mutex_unlock(&mountpoints_mutex);
-	janus_mutex_lock(&sessions_mutex);
-	g_hash_table_destroy(sessions);
-	janus_mutex_unlock(&sessions_mutex);
+    {
+        // Remove all mountpoints
+        std::unique_lock<std::mutex> lock(mountpoints_mutex);
+        for (auto entry : mountpoints) {
+            delete entry.second;
+        }
+        mountpoints.clear();
+    }
 
-    while(!messages.empty()) messages.pop();
+    while (!messages.empty()) messages.pop();
 
-	sessions = NULL;
-
-
-	g_atomic_int_set(&initialized, 0);
-	g_atomic_int_set(&stopping, 0);
-
+    g_atomic_int_set(&initialized, 0);
+    g_atomic_int_set(&stopping, 0);
 
     delete session_manager;
 
-	JANUS_LOG(LOG_INFO, "%s destroyed!\n", JANUS_ULTRASOUND_NAME);
+    JANUS_LOG(LOG_INFO, "%s destroyed!\n", JANUS_ULTRASOUND_NAME);
+}
+
+
+JanusUltrasoundSession::JanusUltrasoundSession(janus_callbacks* gateway, janus_plugin_session* handle)
+{
+    this->gateway = gateway;
+    this->handle = handle;
+
+    this->mountpoint = NULL;	/* This will happen later */
+    this->started = FALSE;	/* This will happen later */
+    this->destroyed = 0;
+    g_atomic_int_set(&this->hangingup, 0);
+}
+
+JanusUltrasoundSession::~JanusUltrasoundSession()
+{
+    delete pipeline;
+
+    if (mountpoint) {
+        janus_mutex_lock(&mountpoint->mutex);
+        mountpoint->listeners = g_list_remove_all(mountpoint->listeners, this);
+        janus_mutex_unlock(&mountpoint->mutex);
+
+        delete mountpoint;
+    }
 }
 
 void janus_ultrasound_create_session(janus_plugin_session *handle, int *error) {
-
-	if(g_atomic_int_get(&stopping) || !g_atomic_int_get(&initialized)) {
-		*error = -1;
+    if(g_atomic_int_get(&stopping) || !g_atomic_int_get(&initialized)) {
+        *error = -1;
 		return;
 	}	
-	janus_ultrasound_session *session = (janus_ultrasound_session *)g_malloc0(sizeof(janus_ultrasound_session));
-	if(session == NULL) {
-		JANUS_LOG(LOG_FATAL, "Memory error!\n");
-		*error = -2;
-		return;
-	}
-	session->handle = handle;
-	session->mountpoint = NULL;	/* This will happen later */
-    session->started = FALSE;	/* This will happen later */
-	session->destroyed = 0;
-    session->gateway = gateway;
-	g_atomic_int_set(&session->hangingup, 0);
-	handle->plugin_handle = session;
-	janus_mutex_lock(&sessions_mutex);
-	g_hash_table_insert(sessions, handle, session);
-    janus_mutex_unlock(&sessions_mutex);
 
-    session_manager->newSession(handle);
-
-	return;
+    JanusUltrasoundSession* session = new JanusUltrasoundSession(gateway, handle);
+    session_manager->addSession(session, handle);
 }
 
 void janus_ultrasound_destroy_session(janus_plugin_session *handle, int *error) {
-
-	if(g_atomic_int_get(&stopping) || !g_atomic_int_get(&initialized)) {
+    if(g_atomic_int_get(&stopping) || !g_atomic_int_get(&initialized)) {
 		*error = -1;
 		return;
 	}	
 
     session_manager->destroySession(handle);
-
-	janus_ultrasound_session *session = (janus_ultrasound_session *)handle->plugin_handle; 
-	if(!session) {
-		JANUS_LOG(LOG_ERR, "No session associated with this handle...\n");
-		*error = -2;
-		return;
-	}
-	JANUS_LOG(LOG_VERB, "Removing ultrasound session...\n");
-	if(session->mountpoint) {
-		janus_mutex_lock(&session->mountpoint->mutex);
-        session->mountpoint->listeners = g_list_remove_all(session->mountpoint->listeners, session);
-        janus_mutex_unlock(&session->mountpoint->mutex);
-
-        delete session->mountpoint;
-	}
-	janus_mutex_lock(&sessions_mutex);
-	if(!session->destroyed) {
-        printf("Freeing old Streaming session\n");
-        session->handle = NULL;
-        g_free(session);
-		g_hash_table_remove(sessions, handle);
-	}
-	janus_mutex_unlock(&sessions_mutex);
-
-
-	return;
 }
 
 char *janus_ultrasound_query_session(janus_plugin_session *handle) {
-	if(g_atomic_int_get(&stopping) || !g_atomic_int_get(&initialized)) {
+    if(g_atomic_int_get(&stopping) || !g_atomic_int_get(&initialized)) {
 		return NULL;
 	}	
-	janus_ultrasound_session *session = (janus_ultrasound_session *)handle->plugin_handle;
+
+    JanusUltrasoundSession* session = session_manager->getSession(handle);
 	if(!session) {
 		JANUS_LOG(LOG_ERR, "No session associated with this handle...\n");
 		return NULL;
 	}
+
 	/* What is this user watching, if anything? */
     json info;
     info["state"] = session->mountpoint ? "watching" : "idle";
@@ -218,13 +184,12 @@ janus_plugin_result* Plugin::onMessage(janus_plugin_session *handle, char *trans
                                        char *message, char *sdp_type, char *sdp)
 {
 
-    if(g_atomic_int_get(&stopping) || !g_atomic_int_get(&initialized)) {
+    if (g_atomic_int_get(&stopping) || !g_atomic_int_get(&initialized)) {
         return janus_plugin_result_new(JANUS_PLUGIN_ERROR,
                g_atomic_int_get(&stopping) ? "Shutting down" : "Plugin not initialized");
     }
 
-    if(message == NULL || handle ->plugin_handle == NULL ||
-      ((janus_ultrasound_session *)handle->plugin_handle)->destroyed)
+    if (message == NULL || session_manager->getSession(handle)->destroyed)
     {
         return Plugin::handleMessageError(handle, transaction, message, NULL, sdp_type, sdp, "Empty message");
     }
@@ -259,7 +224,7 @@ void Plugin::addMessageToQueue(janus_plugin_session *handle, char *transaction, 
 
 
 /* Thread to handle incoming messages */
-void janus_ultrasound_handler() {
+void messageHandlerThread() {
 
     while(g_atomic_int_get(&initialized) && !g_atomic_int_get(&stopping)) {
 
@@ -279,23 +244,21 @@ void janus_ultrasound_handler() {
         }
 
         // Check session is still alive
-        janus_ultrasound_session* session = (janus_ultrasound_session*) msg->handle->plugin_handle;
+        JanusUltrasoundSession* session = session_manager->getSession(msg->handle);
         if(session->destroyed) {
             delete msg;
             continue;
         }
 
         if(msg->message["request"] == "watch") {
-            Plugin::handleMessageWatch(session, msg);
+            session->handleMessageWatch(msg);
         } else if(msg->message["request"] == "ready") {
-            Plugin::handleMessageReady(session, msg);
+            session->handleMessageReady(msg);
         } else if(msg->message["request"] == "start") {
-            Plugin::handleMessageStart(session, msg);
+            session->handleMessageStart(msg);
         } else if(msg->message["request"] == "stop") {
-            Plugin::handleMessageStop(session, msg);
-        }   else {
-            JANUS_LOG(LOG_VERB, "Unknown request '%s'\n", msg->message["request"]);
-
+            session->handleMessageStop(msg);
+        } else {
             json event;
             event["ultrasound"] = "event";
             event["error"] = "Unknown Request";
@@ -311,12 +274,12 @@ void janus_ultrasound_handler() {
 }
 
 
-void Plugin::handleMessageWatch(janus_ultrasound_session *session, Message* msg) {
+void JanusUltrasoundSession::handleMessageWatch(Message* msg) {
 
     /* RTP live source (e.g., from gstreamer/ffmpeg/vlc/etc.) */
     char* desc = "ULTRASOUND";
     int pin = 0;
-    int vport = session_manager->getSessionPort(msg->handle);
+    int vport = session_manager->getSession(msg->handle)->getPort();
     int vcodec = 100;
     char* vrtpmap = "VP8/90000";
     gboolean is_private = false;
@@ -334,19 +297,19 @@ void Plugin::handleMessageWatch(janus_ultrasound_session *session, Message* msg)
     }
 
     RTPSource* mp = janus_ultrasound_create_rtp_source(
-        1,
+        idCounter++,
         desc,
         vport,
         vcodec,
         vrtpmap
     );
 
-    session->stopping = FALSE;
-    session->mountpoint = mp;
+    stopping = FALSE;
+    mountpoint = mp;
 
     /* TODO Check if user is already watching a stream, if the video is active, etc. */
     janus_mutex_lock(&mp->mutex);
-    mp->listeners = g_list_append(mp->listeners, session);
+    mp->listeners = g_list_append(mp->listeners, this);
     janus_mutex_unlock(&mp->mutex);
     char* sdp_type = "offer";	/* We're always going to do the offer ourselves, never answer */
 
@@ -359,42 +322,41 @@ void Plugin::handleMessageWatch(janus_ultrasound_session *session, Message* msg)
 }
 
 
-void Plugin::handleMessageStart(janus_ultrasound_session *session, Message* msg) {
-    JANUS_LOG(LOG_VERB, "Starting the ultrasound\n");
+void JanusUltrasoundSession::handleMessageStart(Message* msg) {
     json result;
     /* We wait for the setup_media event to start: on the other hand, it may have already arrived */
-    result["status"] = session->started ? "started" : "starting";
+    result["status"] = started ? "started" : "starting";
     Plugin::sendPostMessageEvent(result, msg, NULL, NULL);
 }
 
 
-void Plugin::handleMessageStop(janus_ultrasound_session *session, Message *msg) {
-    if(session->stopping || !session->started) {
+void JanusUltrasoundSession::handleMessageStop(Message *msg) {
+    if(stopping || !started) {
         delete msg;
         return;
     }
     JANUS_LOG(LOG_VERB, "Stopping the ultrasound\n");
-    session->stopping = TRUE;
-    session->started = FALSE;
+    stopping = TRUE;
+    started = FALSE;
 
     json result;
     result["status"] = "stopping";
-    if(session->mountpoint) {
-        janus_mutex_lock(&session->mountpoint->mutex);
+    if(mountpoint) {
+        janus_mutex_lock(&mountpoint->mutex);
         JANUS_LOG(LOG_VERB, "  -- Removing the session from the mountpoint listeners\n");
-        if(g_list_find(session->mountpoint->listeners, session) != NULL) {
+        if(g_list_find(mountpoint->listeners, this) != NULL) {
             JANUS_LOG(LOG_VERB, "  -- -- Found!\n");
         }
-        session->mountpoint->listeners = g_list_remove_all(session->mountpoint->listeners, session);
-        janus_mutex_unlock(&session->mountpoint->mutex);
+        mountpoint->listeners = g_list_remove_all(mountpoint->listeners, this);
+        janus_mutex_unlock(&mountpoint->mutex);
     }
-    session->mountpoint = NULL;
+    mountpoint = NULL;
     /* Tell the core to tear down the PeerConnection, hangup_media will do the rest */
-    gateway->close_pc(session->handle);
+    gateway->close_pc(handle);
     Plugin::sendPostMessageEvent(result, msg, NULL, NULL);
 }
 
-void Plugin::handleMessageReady(janus_ultrasound_session *session, Message* msg) {
+void JanusUltrasoundSession::handleMessageReady(Message* msg) {
     session_manager->onSessionReady(msg->handle);
 }
 
@@ -432,10 +394,6 @@ void Plugin::sendPostMessageEvent(json result, Message* msg, char* sdp, char* sd
     delete msg;
 }
 
-void janus_ultrasound_message_free(Message *msg) {
-    delete msg;
-}
-
 void Plugin::incomingData(janus_plugin_session *handle, char* buffer, int length) {
     // Check plugin health
     if (handle == NULL || handle->stopped || g_atomic_int_get(&stopping) ||
@@ -445,7 +403,7 @@ void Plugin::incomingData(janus_plugin_session *handle, char* buffer, int length
     }
 
     // Check session health
-    janus_ultrasound_session *session = (janus_ultrasound_session *)handle->plugin_handle;
+    JanusUltrasoundSession* session = session_manager->getSession(handle);
     if (session == NULL || session->destroyed) {
         JANUS_LOG(LOG_ERR, "No session associated with this handle...\n");
         return;
@@ -470,7 +428,7 @@ void janus_ultrasound_setup_media(janus_plugin_session *handle) {
 
     if (g_atomic_int_get(&stopping) || !g_atomic_int_get(&initialized))
 		return;
-    janus_ultrasound_session* session = (janus_ultrasound_session*) handle->plugin_handle;
+    JanusUltrasoundSession* session = session_manager->getSession(handle);
     if (!session || session->destroyed) {
 		return;
 	}
@@ -499,7 +457,7 @@ void janus_ultrasound_setup_media(janus_plugin_session *handle) {
 void janus_ultrasound_hangup_media(janus_plugin_session *handle) {
     if (g_atomic_int_get(&stopping) || !g_atomic_int_get(&initialized))
         return;
-    janus_ultrasound_session *session = (janus_ultrasound_session *)handle->plugin_handle;
+    JanusUltrasoundSession* session = session_manager->getSession(handle);
     if (!session || session->destroyed || g_atomic_int_add(&session->hangingup, 1)) {
         JANUS_LOG(LOG_ERR, "No session associated with this handle...\n");
         return;
@@ -532,21 +490,21 @@ void janus_ultrasound_incoming_rtcp(janus_plugin_session *handle, int video, cha
 RTPSource* janus_ultrasound_create_rtp_source(uint64_t id, char *name, uint16_t vport,
                                               uint8_t vcodec, char *vrtpmap)
 {
-	janus_mutex_lock(&mountpoints_mutex);
+    RTPSource* rtp_source;
+    {
+        std::unique_lock<std::mutex> lock(mountpoints_mutex);
 
-    int video_fd = create_fd(vport, INADDR_ANY, "Video", "video", name);
-    if(video_fd < 0) {
-        JANUS_LOG(LOG_ERR, "Can't bind to port %d for video...\n", vport);
-        janus_mutex_unlock(&mountpoints_mutex);
-        return NULL;
+        int video_fd = create_fd(vport, INADDR_ANY, "Video", "video", name);
+        if (video_fd < 0) {
+            JANUS_LOG(LOG_ERR, "Can't bind to port %d for video...\n", vport);
+            return NULL;
+        }
+
+        /* Create the mountpoint */
+        rtp_source = new RTPSource(id, strdup(name), vport, video_fd, vcodec, strdup(vrtpmap));
+        mountpoints[rtp_source->id] = rtp_source;
     }
 
-	/* Create the mountpoint */
-
-    RTPSource* rtp_source = new RTPSource(id, strdup(name), vport, video_fd, vcodec, strdup(vrtpmap));
-
-    g_hash_table_insert(mountpoints, GINT_TO_POINTER(rtp_source->id), rtp_source);
-    janus_mutex_unlock(&mountpoints_mutex);
     GError *error = NULL;
     g_thread_try_new(rtp_source->name, &relay_rtp_thread, rtp_source, &error);
 

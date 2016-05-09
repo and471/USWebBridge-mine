@@ -43,7 +43,7 @@ RTPSource::~RTPSource() {
 	free(secret);
 
     janus_mutex_lock(&mutex);
-	g_list_free(listeners);
+    g_list_free(listeners);
     janus_mutex_unlock(&mutex);
 
     if(video_fd > 0) {

@@ -14,17 +14,6 @@ using json = nlohmann::json;
 using namespace std::placeholders;
 
 
-JanusUltrasoundSession::JanusUltrasoundSession(janus_callbacks* gateway, janus_plugin_session* handle)
-{
-    this->gateway = gateway;
-    this->handle = handle;
-}
-
-JanusUltrasoundSession::~JanusUltrasoundSession()
-{
-    delete this->pipeline;
-}
-
 void JanusUltrasoundSession::setPipeline(UltrasoundImagePipeline *pipeline) {
     this->pipeline = pipeline;
     pipeline->setOnNewPatientMetadataCallback(
@@ -33,9 +22,9 @@ void JanusUltrasoundSession::setPipeline(UltrasoundImagePipeline *pipeline) {
 }
 
 void JanusUltrasoundSession::start() {
-    if (!started) {
+    if (!pipeline_started) {
         pipeline->start();
-        started = true;
+        pipeline_started = true;
     }
 }
 
@@ -92,3 +81,12 @@ void JanusUltrasoundSession::setOnSetSliceCallback(std::function<void(int)> cb) 
     this->onSetSliceCallback = cb;
 }
 
+void JanusUltrasoundSession::tearDownPeerConnection() {
+    json event;
+    event["ultrasound"] = "event";
+    event["result"]["status"] = "stopped";
+
+    std::string event_str = event.dump();
+    gateway->push_event(handle, &janus_ultrasound_plugin, NULL, event_str.c_str(), NULL, NULL);
+    gateway->close_pc(handle);
+}
