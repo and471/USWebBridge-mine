@@ -17,7 +17,6 @@ public:
     virtual void stop()=0;
 
     virtual void onSetSlice(int slice)=0;
-
     virtual void setOnNewPatientMetadataCallback(std::function<void(PatientMetadata)> cb) =0;
     virtual void onNewPatientMetadata(PatientMetadata patient) =0;
 
@@ -31,6 +30,9 @@ protected:
     int fps = 20;
 
     std::function<void(PatientMetadata)> onNewPatientMetadataCallback;
+
+    virtual void onFrame(Frame* frame) =0;
+    virtual void onNSlicesChanged(int nSlices) =0;
 };
 
 #endif // ULTRASOUNDIMAGEPIPELINE_H

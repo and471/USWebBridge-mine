@@ -6,20 +6,6 @@
 
 using namespace std::placeholders;
 
-
-JanusUltrasoundSessionManager::~JanusUltrasoundSessionManager() {
-    delete frame_source;
-
-    {
-        // Remove all sessions
-        std::unique_lock<std::mutex> lock(sessions_mutex);
-        for (auto entry : sessions) {
-            delete entry.second;
-        }
-        sessions.clear();
-    }
-}
-
 void JanusUltrasoundSessionManager::addSession(JanusUltrasoundSession* session, janus_plugin_session* handle) {
     UltrasoundImagePipeline* pipeline = createPipeline(session);
     session->setPipeline(pipeline);
@@ -35,20 +21,12 @@ void JanusUltrasoundSessionManager::destroySession(janus_plugin_session* handle)
     }
 }
 
-void JanusUltrasoundSessionManager::onSessionReady(janus_plugin_session* handle) {
-    sessions[handle]->start();
-}
-
-void JanusUltrasoundSessionManager::onDataReceived(janus_plugin_session* handle, char* msg) {
-    sessions[handle]->onDataReceived(msg);
-}
-
 JanusUltrasoundSession* JanusUltrasoundSessionManager::getSession(janus_plugin_session* handle) {
     return sessions[handle];
 }
 
 FrameSource* JanusUltrasoundSessionManager::createFrameSource() {
-    std::string folder = "/home/andrew/Project/forAndrew3D";
+    std::string folder = "/home/andrew/Project/forAndrew2D";
     return new DNLFileFrameSource(folder);
 }
 

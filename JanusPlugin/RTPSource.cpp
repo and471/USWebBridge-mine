@@ -17,25 +17,32 @@ extern "C" {
 
 #include "plugin_hooks.h"
 #include "janus_ultrasound.h"
+#include "rtp_functions.h"
 #include "RTPSource.h"
 #include <boost/format.hpp>
 #include <string>
 
-RTPSource::RTPSource(int id, char* name, int video_port, int video_fd, int video_codec,
-                     char* video_rtpmap)
+RTPSource::RTPSource(int id, char* name, int video_port, int video_codec, char* video_rtpmap)
 {
+     video_fd = create_fd(video_port, INADDR_ANY, "Video", "video", name);
+     if (video_fd < 0) {
+         throw;
+     }
+
     this->id = id;
     this->name = name;
     this->enabled = TRUE;
     this->active = FALSE;
     this->video_mcast = INADDR_ANY;
     this->video_port = video_port;
-    this->video_fd = video_fd;
     this->last_received_video = janus_get_monotonic_time();
     this->codecs.video_pt = video_codec;
     this->codecs.video_rtpmap = video_rtpmap;
     this->listeners = NULL;
+
     janus_mutex_init(&this->mutex);
+
+    g_thread_try_new(name, &relay_rtp_thread, this, NULL);
 }
 
 RTPSource::~RTPSource() {

@@ -21,7 +21,6 @@ public:
     static void initGst();
 
     void onAppSrcNeedData(guint size);
-    void onFrame(Frame* frame);
     void onNSlicesChanged(int nSlices);
 
     void onEnough();
@@ -32,6 +31,7 @@ public:
     void stop();
     void onSetSlice(int slice);
     void setFrameSource(FrameSource* frame_source);
+    void onFrame(Frame* frame);
     int getPort();
 
     void setOnNewPatientMetadataCallback(std::function<void(PatientMetadata)> cb);

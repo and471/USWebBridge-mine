@@ -24,6 +24,8 @@ GstUltrasoundImagePipeline::GstUltrasoundImagePipeline(UltrasoundController* con
         std::bind(&GstUltrasoundImagePipeline::onSetSlice, this, std::placeholders::_1)
     );
 
+    fps = 40;
+
     port = getFreePort();
     createGstPipeline();
 }
@@ -82,6 +84,8 @@ void GstUltrasoundImagePipeline::createGstPipeline() {
     // Pack
     pipeline->add(appsrc)->add(pngdec)->add(conv)->add(videoenc)->add(payloader)->add(udpsink);
     appsrc->link(pngdec)->link(conv)->link(videoenc)->link(payloader)->link(udpsink);
+
+    GST_DEBUG_BIN_TO_DOT_FILE((GstBin*)pipeline->gobj(), GST_DEBUG_GRAPH_SHOW_ALL, "pipeline");
 }
 
 int GstUltrasoundImagePipeline::getFreePort() {

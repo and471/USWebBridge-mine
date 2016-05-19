@@ -3,6 +3,8 @@
 
 #include <janus/plugin.h>
 #include <functional>
+#include <queue>
+#include <mutex>
 
 #include <json.hpp>
 using json = nlohmann::json;
@@ -17,6 +19,20 @@ using json = nlohmann::json;
 
 static const std::string METHOD_NEW_PATIENT_METADATA = "NEW_PATIENT_METADATA";
 static const std::string METHOD_N_SLICES_CHANGED = "N_SLICES_CHANGED";
+
+class JanusUltrasoundSession; // forward dec
+class Message {
+
+public:
+    Message(JanusUltrasoundSession* session, char *transaction, json message, char *sdp, char *sdp_type);
+    ~Message();
+
+    JanusUltrasoundSession* session;
+    char *transaction;
+    json message;
+    char *sdp;
+    char *sdp_type;
+};
 
 class JanusUltrasoundSession : public UltrasoundController
 {
@@ -35,6 +51,8 @@ public:
     void handleMessageStop(Message* msg);
 
     void tearDownPeerConnection();
+    void sendPostMessageEvent(json result, Message* msg, char* sdp, char* sdp_type);
+
 
     // Virtual methods
     void start();
@@ -62,5 +80,7 @@ private:
     std::function<void(int)> onSetSliceCallback;
 
 };
+
+
 
 #endif // JANUS_ULTRASOUNDSESSION_H

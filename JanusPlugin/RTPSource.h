@@ -23,8 +23,7 @@ typedef struct janus_ultrasound_codecs {
 class RTPSource {
 
 public:
-    RTPSource(int id, char* name, int video_port, int video_fd, int video_codec,
-              char* video_rtpmap);
+    RTPSource(int id, char* name, int video_port, int video_codec, char* video_rtpmap);
     ~RTPSource();
 
     char* createSDP();

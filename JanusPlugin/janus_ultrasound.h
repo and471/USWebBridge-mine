@@ -36,43 +36,4 @@ typedef struct janus_ultrasound_context {
 #define JANUS_ULTRASOUND_ERROR_CANT_SWITCH			458
 #define JANUS_ULTRASOUND_ERROR_UNKNOWN_ERROR		470
 
-
-class Message {
-
-public:
-    Message(janus_plugin_session* handle, char *transaction, json message, char *sdp, char *sdp_type);
-    ~Message();
-
-    janus_plugin_session *handle;
-    char *transaction;
-    json message;
-    char *sdp;
-    char *sdp_type;
-};
-
-class Plugin {
-
-public:
-    static void incomingData(janus_plugin_session *handle, char* buffer, int length);
-
-    static janus_plugin_result* onMessage(janus_plugin_session *handle,
-        char *transaction, char *message, char *sdp_type, char *sdp);
-
-    static void addMessageToQueue(janus_plugin_session *handle, char *transaction,
-                                  json root, char *sdp_type, char *sdp);
-
-    static janus_plugin_result* handleMessageError(janus_plugin_session *handle,
-                                            char *transaction, char* message,
-                                            json root, char *sdp_type, char *sdp, char* error);
-
-
-    static void sendPostMessageEvent(json result, Message* msg, char* sdp, char* sdp_type);
-};
-
-/* Helper to create an RTP live source (e.g., from gstreamer/ffmpeg/vlc/etc.) */
-RTPSource* janus_ultrasound_create_rtp_source(uint64_t id, char *name, uint16_t vport,
-                                              uint8_t vcodec, char *vrtpmap);
-/* Useful stuff */
-void messageHandlerThread();
-
 #endif
