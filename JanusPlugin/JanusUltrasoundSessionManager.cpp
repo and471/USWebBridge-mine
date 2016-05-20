@@ -26,7 +26,7 @@ JanusUltrasoundSession* JanusUltrasoundSessionManager::getSession(janus_plugin_s
 }
 
 FrameSource* JanusUltrasoundSessionManager::createFrameSource() {
-    std::string folder = "/home/andrew/Project/forAndrew2D";
+    std::string folder = std::string(std::getenv("DNLIMAGESOURCE"));
     return new DNLFileFrameSource(folder);
 }
 

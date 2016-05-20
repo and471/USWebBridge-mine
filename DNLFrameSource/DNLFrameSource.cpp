@@ -5,6 +5,7 @@
 #include <vtkUnsignedCharArray.h>
 #include <cstdio>
 #include <vtkImageReslice.h>
+#include <vtkTransform.h>
 
 DNLFrameSource::DNLFrameSource() {
     this->slice = 0;
@@ -75,6 +76,20 @@ void DNLFrameSource::getPNG(DNLImage::Pointer image, char** data, size_t* size) 
 
     resampler->SetInterpolationModeToLinear();
     resampler->SetOutputDimensionality(2);
+
+    // Rotate image 180deg about the center
+    double bounds[6];
+    imageData->GetBounds(bounds);
+
+    vtkSmartPointer<vtkTransform> rotate = vtkSmartPointer<vtkTransform>::New();
+    double center[3] = { (bounds[1] + bounds[0]) / 2.0,
+                         (bounds[3] + bounds[2]) / 2.0,
+                         (bounds[5] + bounds[4]) / 2.0 };
+    rotate->Translate(center[0], center[1], center[2]);
+    rotate->RotateWXYZ(180, 0, 0, 1);
+    rotate->Translate(-center[0], -center[1], -center[2]);
+
+    resampler->SetResliceTransform(rotate);
 
     // Write PNG to memory
     pngWriter->SetWriteToMemory(true);
