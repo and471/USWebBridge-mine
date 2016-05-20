@@ -45,3 +45,14 @@ You will need to supply the variables:
 * `JANUS_INCLUDE_DIR` (directory where janus header files are located, installed in the previous step. Located in $PREFIX/include, by default /usr/local/include)
 
 Then run `make`
+
+## Running
+
+First copy/symlink the generated lib/libjanus_ultrasound.so file to $PREFIX/lib/janus/plugins
+
+Then run Janus like so:
+DNLIMAGESOURCE=__DIR__  janus -F /etc/janus/
+
+Replacing __DIR__ with the directory containing DNL images.
+
+Then see https://github.com/and471/USJanusFrontend for running the frontend
