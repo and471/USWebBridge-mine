@@ -60,7 +60,7 @@ void GstUltrasoundImagePipeline::createGstPipeline() {
 
     // Set properties
     Glib::RefPtr<Gst::Caps> png_caps = Gst::Caps::create_simple("image/png");
-    appsrc->property("stream-type", Gst::APP_STREAM_TYPE_STREAM );
+    appsrc->property("stream-type", Gst::APP_STREAM_TYPE_STREAM);
     appsrc->property("is-live", TRUE);
     appsrc->property("format", Gst::FORMAT_TIME);
     appsrc->property("caps", png_caps);
