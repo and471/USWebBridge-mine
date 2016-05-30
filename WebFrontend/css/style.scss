@@ -1,0 +1,290 @@
+$spacing: 10px;
+$phoneWidth: 768px;
+
+body, html {
+	background-color: black;
+	height: 100%;
+	font-family: sans-serif;
+}
+
+body {
+	display: flex;
+	flex-direction: column;
+	position: relative;
+}
+
+.modal-wrapper {
+	display: none;
+	position: absolute;
+	z-index: 1;
+	width: 100%;
+	height: 100%;
+	background-color: rgba(0, 0, 0, 0.8);
+
+	.modal {
+		display: flex;
+		flex-direction: column;
+		border-radius: 3px;
+		padding: $spacing;
+		background-color: white;
+		position: absolute;
+
+
+		background-image: url(/img/nhs.png);
+	    background-position: bottom $spacing left $spacing;
+	    background-repeat: no-repeat;
+	}
+}
+
+.table-no-border td, .table-no-border th {
+	border: none !important
+}
+
+$header_height: 50px;
+header {
+	height: $header_height;
+	color: white;
+	background-color: #005ea5;
+
+	h1 { 
+		font-family: "nta", Arial, sans-serif;
+	    padding: $spacing;
+	    font-weight: bold;
+	}
+
+}
+
+#main {
+	flex-grow: 1;
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	padding: $spacing;
+	height: 100%;
+
+	#content {
+		height: 100%;
+		flex-grow: 1;
+
+		@media only screen and (max-width: $phoneWidth) {
+    		flex-direction: column;
+		}
+
+		$details-width: 300px;
+		#details-col {
+			height: 100%;
+			float: right;
+    		width: $details-width;
+
+			@media only screen and (max-width: $phoneWidth) {
+    			margin-top: $spacing;
+    			float: left;
+    			width:100%;
+			}
+		}
+
+		#video-col {			
+			display: flex;
+    		float: left;
+    		height: 100%;
+    		width: calc(100% - #{$details-width} - #{$spacing});
+			margin-right: $spacing;
+			flex-direction: column;
+
+			@media only screen and (max-width: $phoneWidth) {
+				width:100%;
+    			margin-right: 0;
+			}
+		}
+
+	}
+
+	#debug {
+		padding: $spacing;
+	}
+
+    #video-wrapper {
+        box-sizing: border-box;
+    	padding: $spacing;
+    	flex-grow: 1;
+    	position: relative;
+    	display: flex;
+	    flex-direction: column;
+	    justify-content: center;
+	    overflow: hidden;
+
+    	#video-status {
+    	   	position: absolute;
+		    top: 50%;
+		    left: 0;
+		    width: 100%;
+		    text-align: center;
+		    color: white;
+		    opacity: 0.8;
+    	}
+
+    	#video {
+			transform: scale(1);
+    	}
+    }
+	
+}
+
+#details-col {
+	display: flex;
+    flex-direction: column;
+}
+
+
+.pill {
+	border: 1px solid #333;
+	border-radius: 3px;
+	box-sizing: border-box;
+	color: #fff;
+
+	span.title {
+		display: block;
+		font-weight: bold;
+		border-radius: 3px 3px 0px 0px;
+		border-bottom: 1px solid #333;
+    	text-transform: uppercase;
+    	color: white;
+		padding: $spacing+3 $spacing $spacing $spacing;
+		width: 100%;
+		background-color: #1F1F1F;
+    }
+
+    table {
+    	margin-bottom: 0  !important;
+
+		td, th {
+			padding: $spacing !important;
+		}
+	}
+}
+
+.pill--vertical {
+	margin-top: $spacing;
+
+	&:first-child {
+		margin-top: 0;
+	}
+}
+
+.range-value-control, .range-control {
+	color: black;
+	display: flex;
+	padding: $spacing;
+	line-height: 25px;
+
+	span {
+		margin-right: $spacing;
+		flex-grow: 0;
+		flex-shrink: 0;
+		color: #fff;
+	}
+
+	input[type=range] {
+		flex-grow: 1;
+		margin-left: $spacing;
+	}
+
+	input[type=number] {
+		flex-grow: 0;
+		width: 50px;
+	}
+}
+
+.range-value-control {
+	input[type=range] {
+		margin-right: 20px;
+	}	
+}
+
+
+#take-snapshot {
+	float:right;
+	color: white !important;
+	text-decoration: none !important;
+}
+
+.snapshot-container {
+	width: 90px;
+	height: 40px;
+	margin: $spacing;
+	display: inline-block;
+
+	.image {
+		width: 100%;
+		height: 100%;
+		background-repeat:no-repeat;
+    	background-size:contain;
+	}
+
+	&:hover {
+		cursor: pointer;
+		opacity: 0.7;
+	}
+}
+
+.horizontal-scroll {
+	white-space: nowrap;
+	overflow-x: auto;
+	overflow-y: hidden;
+}
+
+#snapshots { 
+	height: 120px;
+    display: flex;
+    flex-direction: column;
+
+	#snapshots-container {
+		flex-grow: 1;
+	}
+
+}
+
+.disabled .control {
+	opacity: 0.2;
+}
+
+
+#login-modal {
+	$modal-height: 150px;
+	$modal-width: 400px;
+
+	width: $modal-width;
+	height: $modal-height;
+	top: calc((100% - #{$modal-height}) / 2);
+	left: calc((100% - #{$modal-width}) / 2);
+
+	span.heading {
+		text-transform: uppercase;
+	    font-weight: bold;
+	    font-size: 1.1em;
+	    padding: $spacing/2 0 $spacing 0;
+	}
+
+	form {
+		flex-grow: 1;
+		width: 100%;
+		display: flex;
+		flex-direction: column;
+
+		.inputs {
+			flex-grow: 1;
+		}
+
+		.actions {
+			flex-grow: 0;
+
+			button {
+				float: right;
+			}
+		}
+	}
+
+}
+
+
+
