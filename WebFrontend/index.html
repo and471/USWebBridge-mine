@@ -7,8 +7,10 @@
   <title>Ultrasound Streaming</title>
   <link rel="stylesheet" type="text/css" href="css/reset.css">
   <link rel="stylesheet" type="text/css" href="css/bootstrap.min.css">
+  <link rel="stylesheet" type="text/css" href="css/rangeslider.css">
   <link rel="stylesheet" type="text/css" href="css/style.css">
   <script type="text/javascript" src="js/jquery.min.js" ></script>
+  <script type="text/javascript" src="js/rangeslider.min.js" ></script>
   <script type="text/javascript" src="js/janus.js" ></script>
   <script type="text/javascript" src="js/controller.js"></script>
   <script type="text/javascript" src="js/login-modal.js"></script>
@@ -23,7 +25,6 @@
 <body>
   <div class="modal-wrapper">
     <div id="login-modal" class="modal">
-      <span class="heading">Remote Ultrasound Viewer</span>
       <form>
         <div class="inputs">
           <div class="input-group">
@@ -49,7 +50,7 @@
         </div>
 
       <div id="snapshots" class="pill pill--vertical">
-        <span class="title">Image Snapshots  <a href="#" class="control" id="take-snapshot">&#10133;</a></span>
+        <span class="title">Image Snapshots  <div href="#" class="control" id="take-snapshot">&#10133;</div></span>
           <div id="snapshots-container" class="horizontal-scroll control">
         </div>
 
@@ -66,8 +67,8 @@
             <table class="table table-no-border">
               <tbody>
                 <tr>
-                  <td>Patient Name</td>
-                  <td id="detail-patient-name"></td>
+                  <td class="shrink">Patient Name</td>
+                  <td class="grow" id="detail-patient-name"></td>
                 </tr>
               </tbody>
             </table>
@@ -77,13 +78,23 @@
         <div id="image-controls" class="pill pill--vertical">
           <span class="title">Image Controls</span>
           
-          <div id="slice" class="control">
-            <div id="slice-control"></div>
-          </div>
-
-          <div id="zoom" class="control">
-            <div id="zoom-control"></div>
-          </div>
+          <table>
+          <tr class="control">
+            <td class="shrink">3D Slice</td>
+            <td id="slice-control" class="grow"></td>
+          </tr>          
+          <tr class="control">
+            <td class="shrink">Zoom</td>
+            <td id="zoom-control" class="grow"></td>
+          </tr>
+          <tr class="control">
+            <td class="shrink">Stream</td>
+            <td class="grow">
+              <div class="btn btn-dark"id="freeze">Freeze</div>
+              <div class="btn btn-dark"id="">Enhance Region</div>
+            </td>
+          </tr>
+          </table>
 
         </div>
 

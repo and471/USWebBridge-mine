@@ -55,4 +55,4 @@ DNLIMAGESOURCE=__DIR__  janus -F /etc/janus/
 
 Replacing __DIR__ with the directory containing DNL images.
 
-Then see https://github.com/and471/USJanusFrontend for running the frontend
+Then see https://github.com/and471/USWebBridge/tree/master/WebFrontend for running the frontend

@@ -5,6 +5,7 @@ body, html {
 	background-color: black;
 	height: 100%;
 	font-family: sans-serif;
+	font-size: 11px;
 }
 
 body {
@@ -28,11 +29,6 @@ body {
 		padding: $spacing;
 		background-color: white;
 		position: absolute;
-
-
-		background-image: url(/img/nhs.png);
-	    background-position: bottom $spacing left $spacing;
-	    background-repeat: no-repeat;
 	}
 }
 
@@ -156,9 +152,20 @@ header {
 
     table {
     	margin-bottom: 0  !important;
+    	width: 100%;
 
 		td, th {
 			padding: $spacing !important;
+			vertical-align: middle;
+
+			&.grow { 
+				width: 100%; 
+			}
+
+			&.shrink {
+				width: 1px;
+    			white-space: nowrap
+			}
 		}
 	}
 }
@@ -196,8 +203,8 @@ header {
 }
 
 .range-value-control {
-	input[type=range] {
-		margin-right: 20px;
+	.rangeslider {
+		margin: $spacing $spacing*3/2 0 0;
 	}	
 }
 
@@ -250,13 +257,19 @@ header {
 
 
 #login-modal {
-	$modal-height: 150px;
+	$modal-height: 100px;
 	$modal-width: 400px;
 
 	width: $modal-width;
 	height: $modal-height;
 	top: calc((100% - #{$modal-height}) / 2);
 	left: calc((100% - #{$modal-width}) / 2);
+
+
+	background-image: url(/img/nhs.png);
+    background-position: bottom $spacing left $spacing;
+    background-repeat: no-repeat;
+    background-size: 34px 15px;
 
 	span.heading {
 		text-transform: uppercase;
@@ -286,5 +299,27 @@ header {
 
 }
 
+#details table td:first-child {
+	color: #999;
+}
+
+#take-snapshot {
+	cursor: pointer;
+}
+
+.btn, .input-group-addon {
+	font-size: 11px;
+}
+
+.btn-dark {
+	color: white;
+    background-color: #171616;
+    border-color: #1D1D1D;
+
+    &:hover {
+    	color: white;
+    	background-color: #1D1D1D;
+    }
+}
 
 

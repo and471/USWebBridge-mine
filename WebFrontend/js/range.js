@@ -3,8 +3,8 @@ function RangeValueControl(container, label) {
 
 	this.container.addClass("range-value-control");
 
-	this.container.append($("<span></span>").text(label));
 	this.range = $("<input type='range'/>").appendTo($(container));
+	this.range.rangeslider({polyfill: false});
 	this.number = $("<input type='number'/>").appendTo($(container));
 
 	this.range.change(this.onRangeChange.bind(this));
@@ -19,7 +19,7 @@ RangeValueControl.prototype.onRangeChange = function() {
 }
 
 RangeValueControl.prototype.onNumberChange = function() {
-	this.range.val(this.number.val());
+	this.range.val(this.number.val()).rangeslider('update', true);
 	if (this.changeCallback) this.changeCallback();
 }
 
@@ -28,7 +28,7 @@ RangeValueControl.prototype.change = function(cb) {
 }
 
 RangeValueControl.prototype.setVal = function(val) {
-	this.range.val(val);
+	this.range.val(val).rangeslider('update', true);;
 	this.number.val(val);
 }
 
@@ -38,7 +38,7 @@ RangeValueControl.prototype.val = function() {
 
 RangeValueControl.prototype.setMinMax = function(min, max) {
 	this.number.attr("min", min).attr("max", max);
-	this.range.attr("min", min).attr("max", max);
+	this.range.attr("min", min).attr("max", max).rangeslider('update', true);
 }
 
 RangeValueControl.prototype.setVisible = function(visible) {
@@ -51,8 +51,8 @@ function RangeControl(container, label) {
 	this.container = container;
 	this.container.addClass("range-control");
 
-	this.container.append($("<span></span>").text(label));
 	this.range = $("<input type='range'/>").appendTo($(container));
+	this.range.rangeslider({polyfill: false});
 	this.range.on("input", this.onRangeChange.bind(this));
 
 	this.changeCallback = null;
@@ -67,7 +67,7 @@ RangeControl.prototype.change = function(cb) {
 }
 
 RangeControl.prototype.setVal = function(val) {
-	this.range.val(val);
+	this.range.val(val).rangeslider('update', true);
 }
 
 RangeControl.prototype.val = function() {
@@ -75,11 +75,11 @@ RangeControl.prototype.val = function() {
 }
 
 RangeControl.prototype.setMinMax = function(min, max) {
-	this.range.attr("min", min).attr("max", max);
+	this.range.attr("min", min).attr("max", max).rangeslider('update', true);;
 }
 
 RangeControl.prototype.setStep = function(step) {
-	this.range.attr("step", step);
+	this.range.attr("step", step).rangeslider('update', true);
 }
 
 RangeControl.prototype.setVisible = function(visible) {

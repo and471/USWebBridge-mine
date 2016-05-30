@@ -33,4 +33,5 @@ LoginModalController.prototype.success = function() {
 
 LoginModalController.prototype.show = function() {
 	this.wrapper.fadeIn();
+	this.passwordInput.focus()
 }

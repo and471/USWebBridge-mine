@@ -8,7 +8,7 @@ function Controller() {
 	this.login_modal_controller.submit(this.onLoginSubmit.bind(this));
 	
 	this.RETRY_DELAY = 2000;
-	Janus.init({debug: "all", callback: this.onJanusInit.bind(this)});
+	Janus.init({debug: false, callback: this.onJanusInit.bind(this)});
 }
 
 Controller.prototype.onLoginSubmit = function(password) {
@@ -39,7 +39,11 @@ Controller.prototype.initUI = function() {
 	this.zoomControl.setVal(1);
 	this.zoomControl.change(this.onZoomChanged.bind(this));
 
-	this.probe = new ProbeVisualisation($("#probe"), parseInt($("#probe").css("width"), 10), 250);
+	this.probe = new ProbeVisualisation($("#probe"), parseInt($("#probe").css("width"), 10), 200);
+
+	$("#freeze").click(this.togglePause.bind(this));
+
+	this.paused = false;
 }
 
 Controller.prototype.onJanusInit = function() {
@@ -125,14 +129,13 @@ Controller.prototype.onPluginMessage = function(msg, jsep) {
 }
 
 Controller.prototype.onData = function(data_str) {
+	if (this.paused) return;
+
 	var data = JSON.parse(data_str);
-
 	if (data.method) {
-
 		if (data.method === "NEW_PATIENT_METADATA") this.onNewPatientMetadata(data["data"]);
 		if (data.method === "NEW_IMAGE_METADATA") this.onNewImageMetadata(data["data"]);
 		if (data.method === "N_SLICES_CHANGED") this.onNSlicesChanged(data["data"]["nSlices"]);
-
 	}
 }
 
@@ -213,6 +216,19 @@ Controller.prototype.onZoomChanged = function() {
 	$("#video").css("transform", "scale(" + zoom + ")");
 }
 
+Controller.prototype.togglePause = function() {
+	if (this.paused) {
+		$("#video").get(0).play();
+		$("#freeze").text("Freeze");
+	} else {
+		$("#video").get(0).pause();
+		$("#freeze").text("Unfreeze");
+	}
+
+	$("#freeze").toggleClass("btn-dark").toggleClass("btn-default");
+	this.paused = !this.paused;
+}
+
 Controller.prototype.onTakeSnapshotClicked = function() {
 	var img = this.snapshot_controller.snapshot($('#video').get(0), $('#video').get(0).videoWidth, $('#video').get(0).videoHeight);
 
@@ -227,3 +243,4 @@ Controller.prototype.onTakeSnapshotClicked = function() {
 
 	$("#snapshots-container").append(container);
 }
+

@@ -50,12 +50,6 @@ ProbeVisualisation.prototype.createScene = function() {
 ProbeVisualisation.prototype.animate = function() {
     requestAnimationFrame(this.animate.bind(this));
 
-    if (this.probe) {
-        this.probe.rotateX(rad(1/4));
-        this.probe.rotateY(rad(2/4));
-        this.probe.rotateZ(rad(3/4));
-    }
-
     this.renderer.render(this.scene, this.camera);
 }
 
@@ -78,6 +72,10 @@ ProbeVisualisation.prototype.zoomToObject = function() {
 
 ProbeVisualisation.prototype.setPositionOrientation = function(position, orientation) {
 
-    // TODO
+    if (this.probe) {
+        this.probe.rotateX(rad(1/4));
+        this.probe.rotateY(rad(2/4));
+        this.probe.rotateZ(rad(3/4));
+    }
 
 }

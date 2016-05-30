@@ -1,0 +1,52 @@
+.rangeslider,
+.rangeslider__fill {
+  display: block;
+  box-shadow: inset 0px 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+.rangeslider {
+  background: #333333;
+  position: relative;
+}
+
+.rangeslider--horizontal {
+  height: 10px;
+  width: 100%;
+}
+
+.rangeslider--disabled {
+  opacity: 0.4;
+}
+
+.rangeslider__fill {
+  background: #EEEEEE;
+  position: absolute;
+}
+.rangeslider--horizontal .rangeslider__fill {
+  top: 0;
+  height: 100%;
+}
+
+.rangeslider__handle {
+  background: white;
+  cursor: pointer;
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  position: absolute;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.7);
+}
+
+.rangeslider--horizontal .rangeslider__handle {
+  top: -2px;
+}
+
+.rangeslider__handle:active {
+  background: #CCCCCC;
+}
+
+input[type="range"]:focus + .rangeslider .rangeslider__handle {
+  -moz-box-shadow: 0 0 8px rgba(255, 0, 255, 0.9);
+  -webkit-box-shadow: 0 0 8px rgba(255, 0, 255, 0.9);
+  box-shadow: 0 0 8px rgba(255, 0, 255, 0.9);
+}
