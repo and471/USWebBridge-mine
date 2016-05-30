@@ -17,7 +17,10 @@ using namespace std::placeholders;
 void JanusUltrasoundSession::setPipeline(UltrasoundImagePipeline *pipeline) {
     this->pipeline = pipeline;
     pipeline->setOnNewPatientMetadataCallback(
-        std::bind(&UltrasoundController::onNewPatientMetadata, this, std::placeholders::_1)
+        std::bind(&JanusUltrasoundSession::onNewPatientMetadata, this, std::placeholders::_1)
+    );
+    pipeline->setOnNewImageMetadataCallback(
+        std::bind(&JanusUltrasoundSession::onNewImageMetadata, this, std::placeholders::_1)
     );
 }
 
@@ -37,6 +40,18 @@ void JanusUltrasoundSession::onNewPatientMetadata(PatientMetadata patient) {
     obj["name"] = patient.name;
 
     sendMethod(obj, METHOD_NEW_PATIENT_METADATA);
+}
+
+void JanusUltrasoundSession::onNewImageMetadata(ImageMetadata metadata) {
+    json obj;
+
+    std::vector<double> position(std::begin(metadata.position), std::end(metadata.position));
+    std::vector<double> orientation(std::begin(metadata.orientation), std::end(metadata.orientation));
+
+    obj["position"] = position;
+    obj["orientation"] = orientation;
+
+    sendMethod(obj, METHOD_NEW_IMAGE_METADATA);
 }
 
 void JanusUltrasoundSession::onNSlicesChanged(int nSlices) {

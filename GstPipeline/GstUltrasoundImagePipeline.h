@@ -10,6 +10,7 @@
 #include <USPipelineInterface/UltrasoundImagePipeline.h>
 #include <USPipelineInterface/UltrasoundController.h>
 #include <USPipelineInterface/PatientMetadata.h>
+#include <USPipelineInterface/ImageMetadata.h>
 #include <USPipelineInterface/FrameSource.h>
 
 class GstUltrasoundImagePipeline : public UltrasoundImagePipeline
@@ -35,7 +36,8 @@ public:
     int getPort();
 
     void setOnNewPatientMetadataCallback(std::function<void(PatientMetadata)> cb);
-    void onNewPatientMetadata(PatientMetadata patient);
+    void setOnNewImageMetadataCallback(std::function<void(ImageMetadata)> cb);
+
 
 private:
     FrameSource* frame_source;
@@ -43,6 +45,7 @@ private:
 
     bool running = false;
     PatientMetadata patient;
+    ImageMetadata metadata;
     int port;
 
     std::thread* thread;
@@ -57,6 +60,8 @@ private:
     void startThread();
     int getFPS();
     void createGstPipeline();
+    void onNewPatientMetadata(PatientMetadata patient);
+    void onNewImageMetadata(ImageMetadata patient);
 };
 
 #endif // GSTULTRASOUNDIMAGEPIPELINE_H

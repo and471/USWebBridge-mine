@@ -64,7 +64,7 @@ void DNLFileFrameSource::stop() {
     if (this->stop_image_generation) return;
 
     this->stop_image_generation = true;
-    if (this->thread->joinable()){
+    if (this->thread && this->thread->joinable()) {
         this->thread->join();
     }
 

@@ -22,6 +22,7 @@ protected:
 private:
     void getPNG(DNLImage::Pointer image, char** data, size_t* size);
     PatientMetadata getPatientMetadata(DNLImage::Pointer image);
+    ImageMetadata getImageMetadata(DNLImage::Pointer image);
     void checkNSlicesChanged(vtkSmartPointer<vtkImageData> imageData);
 
     vtkPNGWriter* pngWriter;

@@ -18,7 +18,7 @@ public:
 
     virtual void onSetSlice(int slice)=0;
     virtual void setOnNewPatientMetadataCallback(std::function<void(PatientMetadata)> cb) =0;
-    virtual void onNewPatientMetadata(PatientMetadata patient) =0;
+    virtual void setOnNewImageMetadataCallback(std::function<void(ImageMetadata)> cb) =0;
 
     virtual void setFrameSource(FrameSource* frame_source) =0;
 
@@ -30,6 +30,7 @@ protected:
     int fps = 20;
 
     std::function<void(PatientMetadata)> onNewPatientMetadataCallback;
+    std::function<void(ImageMetadata)> onNewImageMetadataCallback;
 
     virtual void onFrame(Frame* frame) =0;
     virtual void onNSlicesChanged(int nSlices) =0;

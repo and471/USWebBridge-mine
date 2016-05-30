@@ -57,7 +57,7 @@ JanusUltrasoundSessionManager::JanusUltrasoundSessionManager(janus_callbacks* ga
 
     g_atomic_int_set(&initialized, 1);
 
-    authenticator = new SimpleAuthenticator();
+    authenticator = new DummyAuthenticator();
 
     /* Launch the thread that will handle incoming messages */
     handler_thread = new std::thread(&JanusUltrasoundSessionManager::messageHandlerThread, this);
@@ -104,6 +104,7 @@ JanusUltrasoundSession::JanusUltrasoundSession(janus_callbacks* gateway, janus_p
 
 JanusUltrasoundSession::~JanusUltrasoundSession()
 {
+    tearDownPeerConnection();
     delete pipeline;
 
     if (mountpoint) {
@@ -207,7 +208,7 @@ void JanusUltrasoundSession::handleMessageWatch(Message* msg) {
     if (!authenticator->isValid(msg->message["auth"])) {
         json event;
         event["ultrasound"] = "event";
-        event["error"] = "Authentication failed";
+        event["error"] = "AUTH_FAIL";
 
         std::string event_str = event.dump();
         gateway->push_event(msg->session->handle, &janus_ultrasound_plugin, msg->transaction,

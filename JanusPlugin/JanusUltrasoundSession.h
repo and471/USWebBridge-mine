@@ -18,7 +18,9 @@ using json = nlohmann::json;
 #include "plugin_hooks.h"
 
 static const std::string METHOD_NEW_PATIENT_METADATA = "NEW_PATIENT_METADATA";
+static const std::string METHOD_NEW_IMAGE_METADATA = "NEW_IMAGE_METADATA";
 static const std::string METHOD_N_SLICES_CHANGED = "N_SLICES_CHANGED";
+
 
 class JanusUltrasoundSession; // forward dec
 class Message {
@@ -52,14 +54,14 @@ public:
 
     void tearDownPeerConnection();
     void sendPostMessageEvent(json result, Message* msg, char* sdp, char* sdp_type);
-
+    void onSetSlice(int slice);
+    void onNewPatientMetadata(PatientMetadata patient);
+    void onNewImageMetadata(ImageMetadata patient);
 
     // Virtual methods
     void start();
     void stop();
-    void onNewPatientMetadata(PatientMetadata patient);
     void onNSlicesChanged(int nSlices);
-    void onSetSlice(int slice);
     void setOnSetSliceCallback(std::function<void(int)> cb);
     void setPipeline(UltrasoundImagePipeline* pipeline);
 

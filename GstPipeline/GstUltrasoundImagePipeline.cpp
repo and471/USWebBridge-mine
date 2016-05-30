@@ -124,7 +124,7 @@ void GstUltrasoundImagePipeline::startThread() {
 void GstUltrasoundImagePipeline::stop() {
     running = false;
 
-    if (thread->joinable()){
+    if (thread && thread->joinable()){
         thread->join();
     }
     delete thread;
@@ -164,8 +164,16 @@ void GstUltrasoundImagePipeline::onFrame(Frame* frame) {
     PatientMetadata patient = frame->getPatientMetadata();
     if (!(patient == this->patient)) {
         this->patient = patient;
-        this->controller->onNewPatientMetadata(patient);
+        this->onNewPatientMetadata(patient);
     }
+
+    // If image metadata changes, send new metadata
+    ImageMetadata metadata = frame->getImageMetadata();
+    if (!(metadata == this->metadata)) {
+        this->metadata = metadata;
+        this->onNewImageMetadata(metadata);
+    }
+
 }
 
 void GstUltrasoundImagePipeline::onNSlicesChanged(int nSlices) {
@@ -186,5 +194,13 @@ void GstUltrasoundImagePipeline::setOnNewPatientMetadataCallback(std::function<v
 
 void GstUltrasoundImagePipeline::onNewPatientMetadata(PatientMetadata patient) {
     this->onNewPatientMetadataCallback(patient);
+}
+
+void GstUltrasoundImagePipeline::setOnNewImageMetadataCallback(std::function<void(ImageMetadata)> cb) {
+    this->onNewImageMetadataCallback = cb;
+}
+
+void GstUltrasoundImagePipeline::onNewImageMetadata(ImageMetadata metadata) {
+    this->onNewImageMetadataCallback(metadata);
 }
 

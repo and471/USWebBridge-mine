@@ -19,9 +19,6 @@ DummyController::~DummyController()
 
 void DummyController::setPipeline(UltrasoundImagePipeline *pipeline) {
     this->pipeline = pipeline;
-    pipeline->setOnNewPatientMetadataCallback(
-        std::bind(&UltrasoundController::onNewPatientMetadata, this, std::placeholders::_1)
-    );
 }
 
 void DummyController::start() {

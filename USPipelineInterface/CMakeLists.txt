@@ -13,7 +13,8 @@ INCLUDE(FindPkgConfig)
 
 add_library(USPipelineInterface
     UltrasoundMetadata.cpp
-    PatientMetadata.cpp
+    PatientMetadata.h
+    ImageMetadata.h
     UltrasoundController.h
     UltrasoundImagePipeline.h
     FrameSource.cpp

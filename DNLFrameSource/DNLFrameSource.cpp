@@ -31,7 +31,7 @@ void DNLFrameSource::onImage(DNLImage::Pointer image) {
     size_t size;
     getPNG(image, &data, &size);
 
-    Frame* frame = new Frame(data, size, getPatientMetadata(image));
+    Frame* frame = new Frame(data, size, getPatientMetadata(image), getImageMetadata(image));
     free(data);
 
     onFrame(frame);
@@ -112,6 +112,16 @@ PatientMetadata DNLFrameSource::getPatientMetadata(DNLImage::Pointer image) {
     //TODO:remove
     patient.name = "Joe Blo";
     return patient;
+}
+
+ImageMetadata DNLFrameSource::getImageMetadata(DNLImage::Pointer image) {
+    ImageMetadata metadata;
+
+    metadata.orientation[0] = rand();
+    metadata.position[1] = rand();
+
+    //TODO: populate
+    return metadata;
 }
 
 void DNLFrameSource::checkNSlicesChanged(vtkSmartPointer<vtkImageData> imageData) {
