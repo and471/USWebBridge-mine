@@ -5,7 +5,8 @@ $(document).ready(function() {
 
 
 function Controller() {
-	this.video = new VideoController($("#video-wrapper"));
+	this.video = new VideoController($("#video-container"));
+	this.video.crop(this.onCrop.bind(this));
 
 	this.webrtc = new WebRTCController();
 	this.webrtc.newImageMetadata(this.onNewImageMetadata.bind(this));
@@ -45,8 +46,7 @@ Controller.prototype.initUI = function() {
 	$("#freeze").click(this.togglePause.bind(this));
 	$("#enhance-region").click(function() {
 		this.video.showAlert("Select a region below to enhance. Unselected areas will not be updated.",  5000);
-		this.webrtc.sendData({"method": "CROP", "data": {"x1": 50, "x2": 250,  "y1": 50, "y2": 250}});
-		this.video.crop(50, 250, 50, 250);
+		this.video.enableCrop();
 	}.bind(this));
 
 	this.paused = false;
@@ -117,4 +117,10 @@ Controller.prototype.onAuthenticationSuccess = function() {
 
 Controller.prototype.onPluginSuccess = function() {
 	this.login_modal.enable();
+}
+
+Controller.prototype.onCrop = function(selection) {
+	this.webrtc.sendData({"method": "CROP", "data": {
+		"left": selection.left(), "right": selection.right(), "top": selection.top(), "bottom": selection.bottom()
+	}});
 }

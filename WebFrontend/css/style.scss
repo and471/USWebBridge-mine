@@ -113,15 +113,11 @@ header {
 	    justify-content: center;
 	    overflow: hidden;
 
-    	#video-status {
-    	   	position: absolute;
-		    top: 50%;
-		    left: 0;
-		    width: 100%;
-		    text-align: center;
-		    color: white;
-		    opacity: 0.8;
-    	}
+	    #video-container {
+	    	display: table;
+    		margin: auto;
+    		position: relative;
+	    }
 
     	.overlay {
     		position: absolute;
@@ -137,6 +133,7 @@ header {
 		    top: $spacing;
 		    width: calc(100% - #{$spacing*2});
 		    opacity: 0.9;
+		    z-index: 2;
     	}
     }
 	

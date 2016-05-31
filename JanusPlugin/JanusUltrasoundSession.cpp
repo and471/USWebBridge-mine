@@ -82,11 +82,11 @@ void JanusUltrasoundSession::onDataReceived(char* msg) {
         int slice = obj["data"]["slice"];
         onSetSlice(slice);
     } else if (obj["method"] == "CROP") {
-        int x1 = obj["data"]["x1"];
-        int x2 = obj["data"]["x2"];
-        int y1 = obj["data"]["y1"];
-        int y2 = obj["data"]["y2"];
-        pipeline->crop(x1, x2, y1, y2);
+        int left = obj["data"]["left"];
+        int right = obj["data"]["right"];
+        int top = obj["data"]["top"];
+        int bottom = obj["data"]["bottom"];
+        pipeline->crop(left, right, top, bottom);
     }
 }
 

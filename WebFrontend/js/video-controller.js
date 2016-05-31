@@ -4,8 +4,15 @@ function VideoController(container) {
 	this.canvas = $("<canvas></canvas>").addClass("overlay").appendTo(this.container);
 	this.canvas.click(this.clearAlerts.bind(this));
 
+	this.buffer = $("<canvas></canvas>");
+	this.buffer_context = this.buffer.get(0).getContext("2d")
+
 	this.context = this.canvas.get(0).getContext("2d");
 	this.render();
+
+	this.select = new RegionSelect(this.canvas);
+	this.select.draw(this.draw.bind(this));
+	this.select.newSelection(this.onNewSelection.bind(this));
 }
 
 VideoController.prototype.pause = function() {
@@ -21,12 +28,11 @@ VideoController.prototype.onRemoteStream = function(stream) {
 }
 
 VideoController.prototype.zoom = function(zoom) {
-	this.canvas.css("transform", "scale(" + zoom + ")");
-	this.video.css("transform", "scale(" + zoom + ")");
+	this.container.css("transform", "scale(" + zoom + ")");
 }
 
 VideoController.prototype.render = function() {
-    requestAnimationFrame(this.render.bind(this));
+	requestAnimationFrame(this.render.bind(this));
 }
 
 VideoController.prototype.clearAlerts = function(content, duration) {
@@ -45,33 +51,46 @@ VideoController.prototype.showAlert = function(content, duration) {
 	}.bind(this), duration);
 }
 
-VideoController.prototype.crop = function(x1, x2, y1, y2) {
-	if (x1 == x2 == y1 == y2 == -1) {
-		// Clear overlay canvas
-
-		return;
-	}
+VideoController.prototype.enableCrop = function() {
+	this.select.enable();
 
 	// Copy the current contents of the video outside the selected region into the overlay canvas
 	var width = this.getWidth();
 	var height = this.getHeight();
 	var video = this.getVideo();
 
-	$(this.canvas).attr("width", width);
-	$(this.canvas).attr("height", height);
+	// Fix container and canvas dimensions while cropping
+	this.container.css("width",  width).css("height", height);
+	this.canvas.attr("width", width).attr("height", height);
 
-    // Draw video
-	this.context.drawImage(video, 0, 0, width, height);
-	
-	// Clear cropped region
-	this.context.save();
-	this.context.globalCompositeOperation = 'destination-out';
-	this.context.fillStyle = "white";
-    this.context.fillRect(x1, y1, x2-x1, y2-y1);
-    this.context.restore();
+	// Save current video content
+	this.buffer.attr("width", width).attr("height", height);
+	this.buffer_context.clearRect(0, 0, width, height);
+	this.buffer_context.drawImage(video, 0, 0, width, height);
+
+	this.draw();
+}
+
+VideoController.prototype.draw = function() {
+	// Draw video
+	this.context.drawImage(this.buffer.get(0), 0, 0, this.buffer.attr("width"), this.buffer.attr("height"));
+}
+
+VideoController.prototype.onNewSelection = function(selection) {
+	this.cropCB(selection);
+
+	this.video.css({
+		position: "absolute", 
+		top: selection.top(), 
+		left: selection.left(), 
+	});
 }
 
 VideoController.prototype.getVideo = function() { return this.video.get(0) }
 // Always up to date
 VideoController.prototype.getHeight = function() { return this.video.get(0).videoHeight }
 VideoController.prototype.getWidth = function() { return this.video.get(0).videoWidth }
+
+VideoController.prototype.crop = function(cb) {
+	this.cropCB = cb;
+}

@@ -34,7 +34,7 @@ public:
     void setFrameSource(FrameSource* frame_source);
     void onFrame(Frame* frame);
     int getPort();
-    void crop(int x1, int x2, int y1, int y2);
+    void crop(int left, int right, int top, int bottom);
 
     void setOnNewPatientMetadataCallback(std::function<void(PatientMetadata)> cb);
     void setOnNewImageMetadataCallback(std::function<void(ImageMetadata)> cb);

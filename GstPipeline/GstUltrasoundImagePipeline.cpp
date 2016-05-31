@@ -175,16 +175,24 @@ void GstUltrasoundImagePipeline::onFrame(Frame* frame) {
 
 }
 
-void GstUltrasoundImagePipeline::crop(int x1, int x2, int y1, int y2) {
+void GstUltrasoundImagePipeline::crop(int left, int right, int top, int bottom) {
     int width, height;
     Glib::RefPtr<Gst::Caps> caps = conv->get_static_pad("src")->get_current_caps();
     caps->get_structure(0).get_field("width", width);
     caps->get_structure(0).get_field("height", height);
 
-    this->videocrop->property("top", y1);
-    this->videocrop->property("left", x1);
-    this->videocrop->property("right", width-x2);
-    this->videocrop->property("bottom", height-y2);
+    if (left == right == top == bottom == -1) {
+        // Reset
+        this->videocrop->property("top", 0);
+        this->videocrop->property("left", 0);
+        this->videocrop->property("right", 0);
+        this->videocrop->property("bottom", 0);
+    } else {
+        this->videocrop->property("top", top);
+        this->videocrop->property("left", left);
+        this->videocrop->property("right", width-right);
+        this->videocrop->property("bottom", height-bottom);
+    }
 }
 
 void GstUltrasoundImagePipeline::onNSlicesChanged(int nSlices) {

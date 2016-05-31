@@ -23,7 +23,7 @@ public:
     virtual void setFrameSource(FrameSource* frame_source) =0;
 
     virtual int getPort() =0;
-    virtual void crop(int x1, int x2, int y1, int y2) =0;
+    virtual void crop(int left, int right, int top, int bottom) =0;
 
 protected:
     UltrasoundController* controller;
