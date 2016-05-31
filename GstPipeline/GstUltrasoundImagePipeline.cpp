@@ -54,6 +54,7 @@ void GstUltrasoundImagePipeline::createGstPipeline() {
     appsrc = Gst::AppSrc::create();
     pngdec = Gst::ElementFactory::create_element("pngdec");
     conv = Gst::ElementFactory::create_element("videoconvert");
+    videocrop = Gst::ElementFactory::create_element("videocrop");
     videoenc = Gst::ElementFactory::create_element("vp8enc");
     payloader = Gst::ElementFactory::create_element("rtpvp8pay");
     udpsink = Gst::ElementFactory::create_element("udpsink");
@@ -82,8 +83,8 @@ void GstUltrasoundImagePipeline::createGstPipeline() {
     appsrc->signal_need_data().connect(sigc::mem_fun(*this, &GstUltrasoundImagePipeline::onAppSrcNeedData));
 
     // Pack
-    pipeline->add(appsrc)->add(pngdec)->add(conv)->add(videoenc)->add(payloader)->add(udpsink);
-    appsrc->link(pngdec)->link(conv)->link(videoenc)->link(payloader)->link(udpsink);
+    pipeline->add(appsrc)->add(pngdec)->add(conv)->add(videocrop)->add(videoenc)->add(payloader)->add(udpsink);
+    appsrc->link(pngdec)->link(conv)->link(videocrop)->link(videoenc)->link(payloader)->link(udpsink);
 
     GST_DEBUG_BIN_TO_DOT_FILE((GstBin*)pipeline->gobj(), GST_DEBUG_GRAPH_SHOW_ALL, "pipeline");
 }
@@ -110,7 +111,6 @@ void GstUltrasoundImagePipeline::start() {
     if (thread != nullptr) {
         fprintf(stderr, "Cannot start new thread: thread is already running\n");
     }
-    frame_source->start();
     pipeline->set_state(Gst::STATE_PLAYING);
 
     running = true;
@@ -130,7 +130,6 @@ void GstUltrasoundImagePipeline::stop() {
     delete thread;
 
     pipeline->set_state(Gst::STATE_NULL);
-    frame_source->stop();
 }
 
 void GstUltrasoundImagePipeline::onAppSrcNeedData(guint _) {
@@ -174,6 +173,18 @@ void GstUltrasoundImagePipeline::onFrame(Frame* frame) {
         this->onNewImageMetadata(metadata);
     }
 
+}
+
+void GstUltrasoundImagePipeline::crop(int x1, int x2, int y1, int y2) {
+    int width, height;
+    Glib::RefPtr<Gst::Caps> caps = conv->get_static_pad("src")->get_current_caps();
+    caps->get_structure(0).get_field("width", width);
+    caps->get_structure(0).get_field("height", height);
+
+    this->videocrop->property("top", y1);
+    this->videocrop->property("left", x1);
+    this->videocrop->property("right", width-x2);
+    this->videocrop->property("bottom", height-y2);
 }
 
 void GstUltrasoundImagePipeline::onNSlicesChanged(int nSlices) {

@@ -13,6 +13,8 @@
   <script type="text/javascript" src="js/rangeslider.min.js" ></script>
   <script type="text/javascript" src="js/janus.js" ></script>
   <script type="text/javascript" src="js/controller.js"></script>
+  <script type="text/javascript" src="js/webrtc-controller.js"></script>
+  <script type="text/javascript" src="js/video-controller.js"></script>
   <script type="text/javascript" src="js/login-modal.js"></script>
   <script type="text/javascript" src="js/range.js"></script>
   <script type="text/javascript" src="js/snapshot.js"></script>
@@ -25,6 +27,7 @@
 <body>
   <div class="modal-wrapper">
     <div id="login-modal" class="modal">
+    <div class="alert alert-warning">No ultrasound stream detected.</div>
       <form>
         <div class="inputs">
           <div class="input-group">
@@ -45,8 +48,7 @@
     <div id="content">
       <div id="video-col">
         <div id="video-wrapper" class="pill">
-          <p id="video-status">No ultrasound stream detected.</p>
-    		  <video id="video" autoplay/>
+    		  
         </div>
 
       <div id="snapshots" class="pill pill--vertical">
@@ -90,8 +92,8 @@
           <tr class="control">
             <td class="shrink">Stream</td>
             <td class="grow">
-              <div class="btn btn-dark"id="freeze">Freeze</div>
-              <div class="btn btn-dark"id="">Enhance Region</div>
+              <div class="btn btn-dark" id="freeze">Freeze</div>
+              <div class="btn btn-dark" id="enhance-region">Enhance Region</div>
             </td>
           </tr>
           </table>

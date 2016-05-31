@@ -6,7 +6,11 @@ function SnapshotController() {
 }
 
 
-SnapshotController.prototype.snapshot = function(video, width, height) {
+SnapshotController.prototype.snapshot = function(videoController) {
+	var width = videoController.getWidth();
+	var height = videoController.getHeight();
+	var video = videoController.getVideo();
+
 	$(this.canvas).attr("width", width);
 	$(this.canvas).attr("height", height);
 

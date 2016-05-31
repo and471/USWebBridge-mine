@@ -4,8 +4,10 @@ function LoginModalController(container) {
 	this.wrapper = this.container.parent(".modal-wrapper");
 	this.passwordInput = this.container.find("input#login-password");
 	this.button = this.container.find("button#login-submit");
+	this.form = this.container.find("form");
+	this.alert = this.container.find(".alert");
 
-	this.container.find("form").submit(this.onFormSubmit.bind(this));
+	this.form.submit(this.onFormSubmit.bind(this));
 
 	this.submitCallback = null;
 }
@@ -33,5 +35,13 @@ LoginModalController.prototype.success = function() {
 
 LoginModalController.prototype.show = function() {
 	this.wrapper.fadeIn();
-	this.passwordInput.focus()
+}
+
+LoginModalController.prototype.enable = function() {
+	this.alert.fadeOut(400);
+	setTimeout(function() {
+		this.form.css("display",  "flex");
+		this.passwordInput.focus();
+	}.bind(this),  500);
+	
 }

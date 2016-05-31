@@ -34,6 +34,7 @@ public:
     void setFrameSource(FrameSource* frame_source);
     void onFrame(Frame* frame);
     int getPort();
+    void crop(int x1, int x2, int y1, int y2);
 
     void setOnNewPatientMetadataCallback(std::function<void(PatientMetadata)> cb);
     void setOnNewImageMetadataCallback(std::function<void(ImageMetadata)> cb);
@@ -52,7 +53,7 @@ private:
     Gst::ClockTime timestamp = 0;
     Glib::RefPtr<Gst::Pipeline> pipeline;
     Glib::RefPtr<Gst::AppSrc> appsrc;
-    Glib::RefPtr<Gst::Element> pngdec, conv, payloader, udpsink, videoenc;
+    Glib::RefPtr<Gst::Element> pngdec, conv, videocrop, payloader, udpsink, videoenc;
 
     int onImageCallbackID;
     int onNSlicesChangedCallbackID;

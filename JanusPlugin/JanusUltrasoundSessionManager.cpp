@@ -8,6 +8,7 @@ using namespace std::placeholders;
 
 void JanusUltrasoundSessionManager::addSession(JanusUltrasoundSession* session, janus_plugin_session* handle) {
     UltrasoundImagePipeline* pipeline = createPipeline(session);
+    frame_source->start();
     session->setPipeline(pipeline);
     sessions[handle] = session;
 }
@@ -19,6 +20,11 @@ void JanusUltrasoundSessionManager::destroySession(janus_plugin_session* handle)
         delete sessions[handle];
         sessions.erase(handle);
     }
+
+    if (sessions.empty()) {
+        frame_source->stop();
+    }
+
 }
 
 JanusUltrasoundSession* JanusUltrasoundSessionManager::getSession(janus_plugin_session* handle) {
