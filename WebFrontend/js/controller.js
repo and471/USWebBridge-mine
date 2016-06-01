@@ -44,12 +44,10 @@ Controller.prototype.initUI = function() {
 	this.probe = new ProbeVisualisation($("#probe"), parseInt($("#probe").css("width"), 10), 200);
 
 	$("#freeze").click(this.togglePause.bind(this));
-	$("#enhance-region").click(function() {
-		this.video.showAlert("Select a region below to enhance. Unselected areas will not be updated.",  5000);
-		this.video.enableCrop();
-	}.bind(this));
+	$("#enhance-region").click(this.toggleEnhance.bind(this));
 
 	this.paused = false;
+	this.enhanced = false;
 }
 
 Controller.prototype.toggleDetails = function() {
@@ -123,4 +121,16 @@ Controller.prototype.onCrop = function(selection) {
 	this.webrtc.sendData({"method": "CROP", "data": {
 		"left": selection.left(), "right": selection.right(), "top": selection.top(), "bottom": selection.bottom()
 	}});
+}
+
+Controller.prototype.toggleEnhance = function() {
+	if (this.enhanced) {
+		this.video.disableCrop();
+	} else {
+		this.video.showAlert("Select a smaller region below to obtain higher quality images.",  5000);
+		this.video.enableCrop();
+	}
+
+	$("#enhance-region").toggleClass("btn-dark").toggleClass("btn-default");
+	this.enhanced = !this.enhanced;
 }

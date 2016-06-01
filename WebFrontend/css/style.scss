@@ -112,11 +112,13 @@ header {
 	    flex-direction: column;
 	    justify-content: center;
 	    overflow: hidden;
+	    background: black;
 
 	    #video-container {
 	    	display: table;
     		margin: auto;
     		position: relative;
+    		overflow: hidden;
 	    }
 
     	.overlay {

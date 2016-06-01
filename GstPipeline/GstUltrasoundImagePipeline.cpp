@@ -181,8 +181,10 @@ void GstUltrasoundImagePipeline::crop(int left, int right, int top, int bottom) 
     caps->get_structure(0).get_field("width", width);
     caps->get_structure(0).get_field("height", height);
 
-    if (left == right == top == bottom == -1) {
-        // Reset
+    if (left == 0 && right == 0 && top == 0 && bottom == 0 ||
+        left == right || top == bottom)
+    {
+        // Reset & also don't let a zero sized stream be sent
         this->videocrop->property("top", 0);
         this->videocrop->property("left", 0);
         this->videocrop->property("right", 0);
