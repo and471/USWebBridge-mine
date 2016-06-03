@@ -156,13 +156,17 @@ header {
 	span.title {
 		display: block;
 		font-weight: bold;
-		border-radius: 3px 3px 0px 0px;
+		border-top: 1px solid #333;
 		border-bottom: 1px solid #333;
     	text-transform: uppercase;
     	color: white;
 		padding: $spacing+3 $spacing $spacing $spacing;
 		width: 100%;
 		background-color: #1F1F1F;
+    }
+
+    >*:first-child span.title {
+    	border-top: none;
     }
 
     table {
@@ -185,11 +189,9 @@ header {
 	}
 }
 
-.pill--vertical {
-	margin-top: $spacing;
-
-	&:first-child {
-		margin-top: 0;
+#image-controls {
+	table {
+		margin-top: $spacing/2;
 	}
 }
 

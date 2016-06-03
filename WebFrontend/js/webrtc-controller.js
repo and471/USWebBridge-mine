@@ -27,12 +27,16 @@ WebRTCController.prototype.onJanusInit = function() {
 	this.janus = new Janus({
 		server: server,
 		success: this.onJanusSuccess.bind(this),
-		error: this.onJanusError.bind(this),
-		destroyed: window.location.reload
+		error: this.onJanusError.bind(this)
 	});
 };
 
 WebRTCController.prototype.onJanusError = function(error) {
+	if (this.plugin) {
+		// Already initialised, so reload the page
+		window.location.reload();
+	}
+	
 	Janus.error(error);
 	Janus.error("Retrying in " + this.RETRY_DELAY + " milliseconds");
 	this.janus.destroy();

@@ -45,23 +45,21 @@ function RegionSelect(canvas) {
     this.mousedown = false;
     this.enabled = false;
 
-    this.canvas.css("cursor", "crosshair")
-               .mousemove(this._on_mousemove.bind(this))
+    this.canvas.mousemove(this._on_mousemove.bind(this))
                .mousedown(this._on_mousedown.bind(this))
                .mouseup(this._on_mouseup.bind(this));
-
-    // Prevent focus border
-    this.canvas.bind('selectstart', function(e) { e.preventDefault(); return false; })
 
     this._request_draw();
 }
 
 RegionSelect.prototype.enable = function() {
+    this.canvas.css("cursor", "crosshair");
     this.selection = Selection.reset();
     this.enabled = true;
 };
 
 RegionSelect.prototype.disable = function() {
+    this.canvas.css("cursor", "default");
     this.selection = null;
     this.enabled = false;
 };

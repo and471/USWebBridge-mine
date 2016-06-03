@@ -33,6 +33,6 @@ void FrameSource::removeOnNSlicesChangedCallback(int callbackID) {
 
 void FrameSource::onNSlicesChanged() {
     for (auto entry : onNSlicesChangedCallbacks) {
-        entry.second(nSlices);
+        entry.second(this->getNSlices());
     }
 }

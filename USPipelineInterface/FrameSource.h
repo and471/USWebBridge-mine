@@ -15,15 +15,14 @@ public:
     void removeOnNSlicesChangedCallback(int callbackID);
 
     virtual ~FrameSource();
-    virtual void setSlice(int slice) = 0;
-    virtual void start() = 0;
-    virtual void stop() = 0;
+    virtual void setSlice(int slice) =0;
+    virtual void start() =0;
+    virtual void stop() =0;
+    virtual int getNSlices() =0;
 
 protected:
     void onFrame(Frame* frame);
     void onNSlicesChanged();
-    int slice;
-    int nSlices;
 
 private:
     int callbackIDCounter = 0;

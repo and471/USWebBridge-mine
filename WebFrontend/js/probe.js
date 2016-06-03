@@ -54,6 +54,9 @@ ProbeVisualisation.prototype.animate = function() {
 }
 
 ProbeVisualisation.prototype.zoomToObject = function() {
+
+    //TODO: CITE
+
     // create an helper
     var helper = new THREE.BoundingBoxHelper(this.probe);
     helper.update();

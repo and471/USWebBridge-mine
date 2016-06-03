@@ -12,12 +12,15 @@ public:
     virtual void stop() = 0;
 
     void setSlice(int slice);
+    int getNSlices();
 
 protected:
     DNLFrameSource();
     ~DNLFrameSource();
 
     void onImage(DNLImage::Pointer image);
+    int slice;
+    int nSlices;
 
 private:
     void getPNG(DNLImage::Pointer image, char** data, size_t* size);

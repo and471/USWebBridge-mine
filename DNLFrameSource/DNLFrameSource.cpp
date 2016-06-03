@@ -134,3 +134,7 @@ void DNLFrameSource::checkNSlicesChanged(vtkSmartPointer<vtkImageData> imageData
         onNSlicesChanged();
     }
 }
+
+int DNLFrameSource::getNSlices() {
+    return this->nSlices;
+}

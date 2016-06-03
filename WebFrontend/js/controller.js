@@ -43,8 +43,8 @@ Controller.prototype.initUI = function() {
 
 	this.probe = new ProbeVisualisation($("#probe"), parseInt($("#probe").css("width"), 10), 200);
 
-	$("#freeze").click(this.togglePause.bind(this));
-	$("#enhance-region").click(this.toggleEnhance.bind(this));
+	new ToggleButton($("#freeze"), "Freeze", this.togglePause.bind(this));
+	new ToggleButton($("#enhance-region"), "Enhance Region", this.toggleEnhance.bind(this));
 
 	this.paused = false;
 	this.enhanced = false;
@@ -64,7 +64,11 @@ Controller.prototype.onNewImageMetadata = function(metadata) {
 }
 
 Controller.prototype.onNSlicesChanged = function(nSlices) {
-	this.sliceControl.setVisible(nSlices > 1);
+	if (nSlices > 1) {
+		$("#slice-control-row").show();
+	} else {
+		$("#slice-control-row").hide();
+	}
 
 	this.sliceControl.setMinMax(-1*Math.floor(nSlices/2), Math.floor(nSlices/2));
 }
@@ -78,18 +82,14 @@ Controller.prototype.onZoomChanged = function() {
 	this.video.zoom(this.zoomControl.val());
 }
 
-Controller.prototype.togglePause = function() {
+Controller.prototype.togglePause = function(toggled) {
 	this.webrtc.togglePause();
-	if (this.paused) {
-		this.video.play();
-		$("#freeze").text("Freeze");
-	} else {
-		this.video.pause();
-		$("#freeze").text("Unfreeze");
-	}
 
-	$("#freeze").toggleClass("btn-dark").toggleClass("btn-default");
-	this.paused = !this.paused;
+	if (toggled) {
+		this.video.pause();
+	} else {
+		this.video.play();
+	}
 }
 
 Controller.prototype.onTakeSnapshotClicked = function() {
@@ -123,14 +123,11 @@ Controller.prototype.onCrop = function(selection) {
 	}});
 }
 
-Controller.prototype.toggleEnhance = function() {
-	if (this.enhanced) {
-		this.video.disableCrop();
-	} else {
+Controller.prototype.toggleEnhance = function(toggled) {
+	if (toggled) {
 		this.video.showAlert("Select a smaller region below to obtain higher quality images.",  5000);
 		this.video.enableCrop();
+	} else {
+		this.video.disableCrop();
 	}
-
-	$("#enhance-region").toggleClass("btn-dark").toggleClass("btn-default");
-	this.enhanced = !this.enhanced;
 }

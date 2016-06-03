@@ -24,7 +24,7 @@ GstUltrasoundImagePipeline::GstUltrasoundImagePipeline(UltrasoundController* con
         std::bind(&GstUltrasoundImagePipeline::onSetSlice, this, std::placeholders::_1)
     );
 
-    fps = 40;
+    fps = 8;
 
     port = getFreePort();
     createGstPipeline();
@@ -73,7 +73,12 @@ void GstUltrasoundImagePipeline::createGstPipeline() {
     videoenc->property("deadline", 1);
     videoenc->property("cpu-used", 4);
     videoenc->property("lag-in-frames", 0);
-    //videoenc->property("keyframe-max-dist", 128);
+    videoenc->property("error-resilient", 1);
+    videoenc->property("keyframe-max-dist", 8);
+
+    videoenc->property("min-quantizer", 30);
+    videoenc->property("max-quantizer", 30);
+
 
     //gst_preset_load_preset(GST_PRESET(videoenc), "Profile Realtime");
     udpsink->property<Glib::ustring>("host", "127.0.0.1");
@@ -115,6 +120,10 @@ void GstUltrasoundImagePipeline::start() {
 
     running = true;
     thread = new std::thread(&GstUltrasoundImagePipeline::startThread, this);
+
+    // Manually fire these events when we start
+    onNSlicesChanged(frame_source->getNSlices());
+    onNewPatientMetadata(patient);
 }
 
 void GstUltrasoundImagePipeline::startThread() {
@@ -163,14 +172,14 @@ void GstUltrasoundImagePipeline::onFrame(Frame* frame) {
     PatientMetadata patient = frame->getPatientMetadata();
     if (!(patient == this->patient)) {
         this->patient = patient;
-        this->onNewPatientMetadata(patient);
+        onNewPatientMetadata(patient);
     }
 
     // If image metadata changes, send new metadata
     ImageMetadata metadata = frame->getImageMetadata();
     if (!(metadata == this->metadata)) {
         this->metadata = metadata;
-        this->onNewImageMetadata(metadata);
+        onNewImageMetadata(metadata);
     }
 
 }

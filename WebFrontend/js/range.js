@@ -41,12 +41,6 @@ RangeValueControl.prototype.setMinMax = function(min, max) {
 	this.range.attr("min", min).attr("max", max).rangeslider('update', true);
 }
 
-RangeValueControl.prototype.setVisible = function(visible) {
-	if (visible) this.container.show();
-	else         this.container.hide();
-}
-
-
 function RangeControl(container, label) {
 	this.container = container;
 	this.container.addClass("range-control");
@@ -80,9 +74,4 @@ RangeControl.prototype.setMinMax = function(min, max) {
 
 RangeControl.prototype.setStep = function(step) {
 	this.range.attr("step", step).rangeslider('update', true);
-}
-
-RangeControl.prototype.setVisible = function(visible) {
-	if (visible) this.container.show();
-	else         this.container.hide();
 }

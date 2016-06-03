@@ -14,6 +14,14 @@ function VideoController(container) {
 	this.select = new RegionSelect(this.canvas);
 	this.select.requestDraw(this.draw.bind(this));
 	this.select.newSelection(this.onNewSelection.bind(this));
+
+    // Prevent selecting
+ 	var preventHighlighting = function(e) { e.preventDefault(); return false; };
+    this.canvas.bind('selectstart', preventHighlighting);
+    this.container.bind('selectstart', preventHighlighting);
+    this.container.parent().bind('selectstart', preventHighlighting);
+    this.video.bind('selectstart', preventHighlighting);
+
 }
 
 VideoController.prototype.pause = function() {
