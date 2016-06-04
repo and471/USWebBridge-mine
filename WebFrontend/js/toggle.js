@@ -9,7 +9,7 @@ function ToggleButton(button, textNormal, callback) {
 
 ToggleButton.prototype.onToggle = function() {
     this.toggled = !this.toggled;
-    this.button.toggleClass("btn-dark").toggleClass("btn-default");
+    this.button.toggleClass("btn-orange").toggleClass("btn-dark");
     this.callback(this.toggled);
 }
 

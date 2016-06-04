@@ -426,13 +426,14 @@ void janus_ultrasound_incoming_rtp(janus_plugin_session *handle, int video, char
 void janus_ultrasound_incoming_rtcp(janus_plugin_session *handle, int video, char *buf, int len) {
     if (handle == NULL || handle->stopped || g_atomic_int_get(&stopping) || !g_atomic_int_get(&initialized))
         return;
-    /* We might interested in the available bandwidth that the user advertizes */
-    uint64_t bw = janus_rtcp_get_remb(buf, len);
-    if(bw > 0) {
-        JANUS_LOG(LOG_HUGE, "REMB for this PeerConnection: %"SCNu64"\n", bw);
-        /* TODO Use this somehow (e.g., notification towards application?) */
-    }
-    /* FIXME Maybe we should care about RTCP, but not now */
+
+    rtcp_context ctx;
+    janus_rtcp_parse(&ctx, buf, len);
+
+    uint32_t lost = janus_rtcp_context_get_lost(&ctx);
+    uint32_t lostp = janus_rtcp_context_get_lost_fraction(&ctx);
+
+    printf("Packet loss =  %lu = %lu percent\n", (unsigned long)lost, (unsigned long)lostp);
 }
 
 void janus_ultrasound_create_session(janus_plugin_session *handle, int *error) {

@@ -87,7 +87,7 @@ VideoController.prototype.enableCrop = function() {
 VideoController.prototype.disableCrop = function() {
 	this.drawBuffer(this.select.getSelection().left(),  this.select.getSelection().top());
 
-	this.select.disable();
+	this.select.disableAndClear();
 
 	var resetFunction = function() {
 		this.container.css({width: "auto", height: "auto", display: "table"});

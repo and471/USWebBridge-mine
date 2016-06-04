@@ -60,13 +60,16 @@ RegionSelect.prototype.enable = function() {
 
 RegionSelect.prototype.disable = function() {
     this.canvas.css("cursor", "default");
-    this.selection = null;
     this.enabled = false;
+};
+
+RegionSelect.prototype.disableAndClear = function() {
+    this.disable();
+    this.selection = null;
 };
 
 
 RegionSelect.prototype.draw = function(context) {
-    if (!this.enabled) return;
     if (!this.selection) return;
 
     // Draw borders by drawing shrinking rectangles
@@ -112,6 +115,7 @@ RegionSelect.prototype._on_mouseup = function(event) {
     }
 
     this.mousedown = false;
+    this.disable();
 }
 
 RegionSelect.prototype._request_draw = function() {

@@ -79,6 +79,8 @@ void GstUltrasoundImagePipeline::createGstPipeline() {
     videoenc->property("min-quantizer", 30);
     videoenc->property("max-quantizer", 30);
 
+    payloader->property("mtu", 1024);
+
 
     //gst_preset_load_preset(GST_PRESET(videoenc), "Profile Realtime");
     udpsink->property<Glib::ustring>("host", "127.0.0.1");
@@ -91,11 +93,10 @@ void GstUltrasoundImagePipeline::createGstPipeline() {
     pipeline->add(appsrc)->add(pngdec)->add(conv)->add(videocrop)->add(videoenc)->add(payloader)->add(udpsink);
     appsrc->link(pngdec)->link(conv)->link(videocrop)->link(videoenc)->link(payloader)->link(udpsink);
 
-    GST_DEBUG_BIN_TO_DOT_FILE((GstBin*)pipeline->gobj(), GST_DEBUG_GRAPH_SHOW_ALL, "pipeline");
 }
 
 int GstUltrasoundImagePipeline::getFreePort() {
-    return 5004 + (portCounter++);
+    return 5005 + (portCounter++);
 }
 
 int GstUltrasoundImagePipeline::getPort() {

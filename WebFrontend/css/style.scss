@@ -227,8 +227,8 @@ header {
 
 
 #take-snapshot {
-	float:right;
-	color: white !important;
+	float: right;
+	color: #ff9621 !important;
 	text-decoration: none !important;
 }
 
@@ -337,6 +337,17 @@ header {
     &:hover {
     	color: white;
     	background-color: #1D1D1D;
+    }
+}
+
+.btn-orange {
+	color: white;
+    background-color: #da7d15;
+    border-color: #ff931a;
+
+    &:hover {
+    	color: white;
+    	background-color: #ea830f;
     }
 }
 
