@@ -8,11 +8,16 @@
 #include <glib.h>
 #include <functional>
 #include <cstring>
+#include <mutex>
 
 static bool initialised = false;
+static std::mutex creationMutex;
 static int portCounter = 0;
 
 GstUltrasoundImagePipeline::GstUltrasoundImagePipeline(UltrasoundController* controller) {
+    // Seem to be issues with concurrently initialising pipelines, so prevent this
+    std::unique_lock<std::mutex> lock(creationMutex);
+
     if (!initialised) initGst();
 
     this->controller = controller;
@@ -24,7 +29,8 @@ GstUltrasoundImagePipeline::GstUltrasoundImagePipeline(UltrasoundController* con
         std::bind(&GstUltrasoundImagePipeline::onSetSlice, this, std::placeholders::_1)
     );
 
-    fps = 8;
+    fps = 10;
+    qp = 30;
 
     port = getFreePort();
     createGstPipeline();
@@ -75,14 +81,16 @@ void GstUltrasoundImagePipeline::createGstPipeline() {
     videoenc->property("lag-in-frames", 0);
     videoenc->property("error-resilient", 1);
     videoenc->property("keyframe-max-dist", 8);
+    videoenc->property("static-threshold", 800);
 
-    videoenc->property("min-quantizer", 30);
-    videoenc->property("max-quantizer", 30);
+    videoenc->property("min-quantizer", 8);
+    videoenc->property("max-quantizer", 50);
+
+
+    videoenc->property("target-bitrate", 500*1000);
 
     payloader->property("mtu", 1024);
 
-
-    //gst_preset_load_preset(GST_PRESET(videoenc), "Profile Realtime");
     udpsink->property<Glib::ustring>("host", "127.0.0.1");
     udpsink->property("port", port);
 
@@ -195,15 +203,15 @@ void GstUltrasoundImagePipeline::crop(int left, int right, int top, int bottom) 
         left == right || top == bottom)
     {
         // Reset & also don't let a zero sized stream be sent
-        this->videocrop->property("top", 0);
-        this->videocrop->property("left", 0);
-        this->videocrop->property("right", 0);
-        this->videocrop->property("bottom", 0);
+        videocrop->property("top", 0);
+        videocrop->property("left", 0);
+        videocrop->property("right", 0);
+        videocrop->property("bottom", 0);
     } else {
-        this->videocrop->property("top", top);
-        this->videocrop->property("left", left);
-        this->videocrop->property("right", width-right);
-        this->videocrop->property("bottom", height-bottom);
+        videocrop->property("top", top);
+        videocrop->property("left", left);
+        videocrop->property("right", width-right);
+        videocrop->property("bottom", height-bottom);
     }
 }
 
@@ -235,3 +243,36 @@ void GstUltrasoundImagePipeline::onNewImageMetadata(ImageMetadata metadata) {
     this->onNewImageMetadataCallback(metadata);
 }
 
+void GstUltrasoundImagePipeline::setFPS(int fps) {
+    this->fps = fps;
+}
+
+void GstUltrasoundImagePipeline::getQPBounds(int* min, int* max) {
+    *min = 0;
+    *max = 63;
+}
+
+void GstUltrasoundImagePipeline::setBitrate(int bitrate) {
+    if (!videoenc) return;
+    if (bitrate < 1000) return;
+
+    double error = 0.1;
+
+    printf("Set bitrate is: %g mb/s                    (with error, %g) \n", (bitrate / 1000000.), (bitrate * (1-error) / 1000000.));
+    fflush(stdout);
+
+    videoenc->property("target-bitrate", bitrate * (1-error));
+
+    /*
+    int min, max;
+    getQPBounds(&min, &max);
+
+    if (!(min <= qp && qp <= max)) {
+        fprintf(stderr, "QP parameter %d not within %d - %d", qp, min, max);
+        return;
+    }
+
+    this->qp = qp;
+    //videoenc->property("min-quantizer", qp);
+    //videoenc->property("max-quantizer", qp);*/
+}

@@ -42,6 +42,9 @@ Controller.prototype.initUI = function() {
 	this.zoomControl.change(this.onZoomChanged.bind(this));
 
 	this.probe = new ProbeVisualisation($("#probe"), parseInt($("#probe").css("width"), 10), 200);
+	if (!this.probe.enabled) {
+		$("#probe-visualisation").hide();
+	}
 
 	new ToggleButton($("#freeze"), "Freeze", this.togglePause.bind(this));
 	new ToggleButton($("#enhance-region"), "Enhance Region", this.toggleEnhance.bind(this));
@@ -56,7 +59,12 @@ Controller.prototype.toggleDetails = function() {
 }
 
 Controller.prototype.onNewPatientMetadata = function(patient) {
-	$("#detail-patient-name").text(patient["name"]);
+	var name = patient["name"];
+	if (!name || name == "") {
+		name = "Not Available";
+	}
+
+	$("#detail-patient-name").text(name);
 }
 
 Controller.prototype.onNewImageMetadata = function(metadata) {
@@ -125,7 +133,7 @@ Controller.prototype.onCrop = function(selection) {
 
 Controller.prototype.toggleEnhance = function(toggled) {
 	if (toggled) {
-		this.video.showAlert("Select a smaller region below to obtain higher quality images.",  5000);
+		this.video.showAlert("Select a smaller region below to obtain higher quality images",  5000);
 		this.video.enableCrop();
 	} else {
 		this.video.disableCrop();

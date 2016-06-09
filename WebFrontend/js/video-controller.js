@@ -50,14 +50,19 @@ VideoController.prototype.clearAlerts = function(content, duration) {
 
 VideoController.prototype.showAlert = function(content, duration) {
 	duration = duration ? duration : 1000;
+	var fadeOut = 400;
 
-	var alert = $("<div></div>").addClass("alert alert-info")
+	var alert = $("<div></div>").addClass("alert alert-orange")
 								.text(content)
 								.appendTo(this.container);
 
 	setTimeout(function() {
-		alert.fadeOut();
+		alert.fadeOut(fadeOut);
 	}.bind(this), duration);
+
+	setTimeout(function() {
+		alert.remove();
+	}.bind(this), duration+fadeOut*2);
 }
 
 VideoController.prototype.enableCrop = function() {

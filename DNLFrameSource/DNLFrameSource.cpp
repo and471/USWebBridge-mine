@@ -108,19 +108,21 @@ PatientMetadata DNLFrameSource::getPatientMetadata(DNLImage::Pointer image) {
     PatientMetadata patient;
     patient.name = image->patientName();
 
-
-    //TODO:remove
-    patient.name = "Joe Blo";
     return patient;
 }
 
 ImageMetadata DNLFrameSource::getImageMetadata(DNLImage::Pointer image) {
     ImageMetadata metadata;
 
-    metadata.orientation[0] = rand();
-    metadata.position[1] = rand();
+    std::vector<double> probe = image->GetTrackerData();
+    for (int i = 0; i < 3; i++) {
+        metadata.position[i] = probe[i];
+    }
 
-    //TODO: populate
+    for (int i = 0; i < 4; i++) {
+        metadata.orientation[i] = probe[i+3];
+    }
+
     return metadata;
 }
 

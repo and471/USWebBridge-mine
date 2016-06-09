@@ -32,10 +32,12 @@ using json = nlohmann::json;
 #include "auth/Authenticator.h"
 #include "auth/DummyAuthenticator.h"
 #include "auth/SimpleAuthenticator.h"
+#include "ratecontrol/TFRCController.h"
 
 #include <mutex>
 #include <queue>
 #include <map>
+#include <functional>
 
 //TODO: move static functions into a class and make below members
 
@@ -424,16 +426,13 @@ void janus_ultrasound_incoming_rtp(janus_plugin_session *handle, int video, char
 }
 
 void janus_ultrasound_incoming_rtcp(janus_plugin_session *handle, int video, char *buf, int len) {
+    struct timeval arrival;
+    gettimeofday(&arrival, NULL);
+
     if (handle == NULL || handle->stopped || g_atomic_int_get(&stopping) || !g_atomic_int_get(&initialized))
         return;
 
-    rtcp_context ctx;
-    janus_rtcp_parse(&ctx, buf, len);
-
-    uint32_t lost = janus_rtcp_context_get_lost(&ctx);
-    uint32_t lostp = janus_rtcp_context_get_lost_fraction(&ctx);
-
-    printf("Packet loss =  %lu = %lu percent\n", (unsigned long)lost, (unsigned long)lostp);
+    session_manager->onRTCP(handle, buf, len, arrival);
 }
 
 void janus_ultrasound_create_session(janus_plugin_session *handle, int *error) {

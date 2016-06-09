@@ -53,6 +53,9 @@ set (SRCS
     auth/Authenticator.h
     auth/SimpleAuthenticator.cpp
     auth/DummyAuthenticator.cpp
+    ratecontrol/RateController.cpp
+    ratecontrol/StaticRateController.cpp
+    ratecontrol/TFRCController.cpp
 )
 
 ADD_LIBRARY(janus_ultrasound SHARED

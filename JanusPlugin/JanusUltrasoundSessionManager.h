@@ -34,6 +34,7 @@ public:
 
     FrameSource* createFrameSource();
     UltrasoundImagePipeline* createPipeline(UltrasoundController* controller);
+    void onRTCP(janus_plugin_session* handle, char* packet, int len, struct timeval arrival);
 
 
 private:

@@ -39,6 +39,10 @@ public:
     void setOnNewPatientMetadataCallback(std::function<void(PatientMetadata)> cb);
     void setOnNewImageMetadataCallback(std::function<void(ImageMetadata)> cb);
 
+    void setFPS(int fps);
+    void getQPBounds(int* min, int* max);
+    void setBitrate(int bitrate);
+
 
 private:
     FrameSource* frame_source;
@@ -48,6 +52,9 @@ private:
     PatientMetadata patient;
     ImageMetadata metadata;
     int port;
+
+    int fps;
+    int qp;
 
     std::thread* thread;
     Gst::ClockTime timestamp = 0;

@@ -7,6 +7,8 @@ class ImageMetadata
 {
 public:
     double position[3] = {0,0,0};
+    // A quaternion, with the first 3 components representing the axis
+    // the probe lies in, and the 4th representing the orientation around that axis
     double orientation[4] = {0,0,0,0};
 
     // Equality operator

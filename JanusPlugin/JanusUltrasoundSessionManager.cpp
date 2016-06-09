@@ -3,6 +3,7 @@
 #include <DNLFrameSource/DNLFileFrameSource.h>
 #include "JanusUltrasoundSession.h"
 #include "JanusUltrasoundSessionManager.h"
+#include "ratecontrol/TFRCController.h"
 
 using namespace std::placeholders;
 
@@ -10,6 +11,10 @@ void JanusUltrasoundSessionManager::addSession(JanusUltrasoundSession* session, 
     UltrasoundImagePipeline* pipeline = createPipeline(session);
     frame_source->start();
     session->setPipeline(pipeline);
+
+    RateController* rateController = new TFRCController();
+    session->setRateController(rateController);
+
     sessions[handle] = session;
 }
 
@@ -25,6 +30,10 @@ void JanusUltrasoundSessionManager::destroySession(janus_plugin_session* handle)
         frame_source->stop();
     }
 
+}
+
+void JanusUltrasoundSessionManager::onRTCP(janus_plugin_session* handle, char* packet, int len, struct timeval arrival) {
+    getSession(handle)->onRTCP(packet, len, arrival);
 }
 
 JanusUltrasoundSession* JanusUltrasoundSessionManager::getSession(janus_plugin_session* handle) {

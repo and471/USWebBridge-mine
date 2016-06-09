@@ -13,6 +13,7 @@ using json = nlohmann::json;
 #include <USPipelineInterface/FrameSource.h>
 #include <USPipelineInterface/UltrasoundImagePipeline.h>
 #include <USPipelineInterface/UltrasoundController.h>
+#include "ratecontrol/RateController.h"
 #include "RTPSource.h"
 
 #include "plugin_hooks.h"
@@ -57,6 +58,9 @@ public:
     void onSetSlice(int slice);
     void onNewPatientMetadata(PatientMetadata patient);
     void onNewImageMetadata(ImageMetadata patient);
+    void onRTCP(char* packet, int len, struct timeval arrival);
+    void onRateControllerBitrateChange(int bitrate);
+    void setRateController(RateController* rateController);
 
     // Virtual methods
     void start();
@@ -73,6 +77,7 @@ public:
     volatile gint hangingup;
     gint64 destroyed;
     bool started = false;
+    RateController* rateController;
 
     janus_callbacks* gateway;
     janus_plugin_session* handle;

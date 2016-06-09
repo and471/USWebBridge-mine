@@ -111,3 +111,36 @@ void JanusUltrasoundSession::tearDownPeerConnection() {
     gateway->push_event(handle, &janus_ultrasound_plugin, NULL, event_str.c_str(), NULL, NULL);
     gateway->close_pc(handle);
 }
+
+void JanusUltrasoundSession::onRTCP(char* packet, int len, struct timeval arrival) {
+    int total = len;
+
+    // Parse Receiver Response RTCP packets
+    rtcp_header *rtcp = (rtcp_header*) packet;
+    while(rtcp) {
+        if (rtcp->type == RTCP_RR) {
+            rateController->onRTCPReceiverReport((rtcp_rr*) rtcp, arrival);
+        }
+
+        /* If this is a compound packet, move onto next one */
+        int length = ntohs(rtcp->length);
+        total -= length*4+4;
+
+        if (length == 0 || total <= 0) {
+            // No more left to process
+            break;
+        }
+        rtcp = (rtcp_header *)((uint32_t*)rtcp + length + 1);
+    }
+}
+
+void JanusUltrasoundSession::onRateControllerBitrateChange(int bitrate) {
+    pipeline->setBitrate(bitrate);
+}
+
+void JanusUltrasoundSession::setRateController(RateController* rateController) {
+    this->rateController = rateController;
+    rateController->setOnBitrateChangeCallback(
+        std::bind(&JanusUltrasoundSession::onRateControllerBitrateChange, this, std::placeholders::_1)
+    );
+}
