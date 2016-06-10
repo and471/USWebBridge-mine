@@ -1,6 +1,8 @@
 #ifndef TFRCCONTROLLER_H
 #define TFRCCONTROLLER_H
 
+#define BITRATE_MIN (200 * 1000)
+#define BITRATE_MAX (2   * 1000 * 1000)
 
 class PacketLossTracker {
 
@@ -14,6 +16,19 @@ private:
 
 };
 
+class PeakTracker {
+
+public:
+    void add(int bitrate);
+    int get();
+    bool close(int bitrate);
+private:
+    int peak = BITRATE_MAX;
+    int lastBitrate = BITRATE_MIN;
+    int currentBitrate = BITRATE_MIN;
+
+};
+
 class TFRCController : public RateController
 {
 public:
@@ -21,17 +36,13 @@ public:
     void setOnBitrateChangeCallback(std::function<void(int)> cb);
 
 private:
-    const int BITRATE_MIN = 200 * 1000;
-    const int BITRATE_MAX = 2   * 1000 * 1000;
-    const double BITRATE_CHANGE_MAX = 15*1000; //15
-    const double BITRATE_CHANGE_MAX_SLOWSTART = 0.08; //40
+    const double BITRATE_CHANGE_MAX = 0.08; //40
 
-    const int CHANGE_INTERVAL_DECREASE = 3000;
-    const int CHANGE_INTERVAL_INCREASE = 4500;
-    const int CHANGE_INTERVAL_SLOWSTART = 1000;
+    const int CHANGE_INTERVAL = 1500;
+    const int CHANGE_INTERVAL_PEAK = 3000;
 
     int calculateInitialBitrate(int MSS, int R);
-    int calculateBitrate(double R_sample, bool* newSlowStart);
+    int calculateBitrate(double R_sample);
     void updateRTT(double R_new);
     uint32_t getNTPTime32(struct timeval tv);
     long int getMilliseconds();
@@ -58,6 +69,8 @@ private:
     long int lastChanged = -1;
     long int start = -1;
     int lastChange = 0;
+
+    PeakTracker* peak = new PeakTracker();
 
     bool slowStart = true;
 };

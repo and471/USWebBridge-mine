@@ -6,6 +6,9 @@
 int min(int a, int b) { return (a < b) ? a : b; }
 int max(int a, int b) { return (a > b) ? a : b; }
 
+double min(double a, double b) { return (a < b) ? a : b; }
+double max(double a, double b) { return (a > b) ? a : b; }
+
 void TFRCController::onRTCPReceiverReport(rtcp_rr* rr, struct timeval arrival) {
     if (start == -1) start = getMilliseconds();
 
@@ -30,35 +33,31 @@ void TFRCController::onRTCPReceiverReport(rtcp_rr* rr, struct timeval arrival) {
     // If estimated RTT is not yet available, don't calculate bitrate
     if (R == -1) return;
 
-    bool newSlowStart = slowStart;
-    int bitrate = calculateBitrate(rtt, &newSlowStart);
+    int bitrate = calculateBitrate(rtt);
 
-    int interval;
-
-    if (slowStart) {
-        interval = CHANGE_INTERVAL_SLOWSTART;
-    } else {
-        if (lastChange > 0) interval = CHANGE_INTERVAL_DECREASE;
-        else                interval = CHANGE_INTERVAL_INCREASE;
-    }
+    int interval = CHANGE_INTERVAL;
+    if (peak->close(currentBitrate)) interval = CHANGE_INTERVAL_PEAK;
 
     if (getMilliseconds() - lastChanged  >= interval || lastChanged == -1) {
+
+        peak->add(bitrate);
+
+
         bitrateChange(bitrate);
+
         lastChange = currentBitrate - bitrate;
         lastChanged = getMilliseconds();
 
         packetLoss->reset();
         currentBitrate = bitrate;
     }
-
-    slowStart = newSlowStart;
 }
 
 int TFRCController::calculateInitialBitrate(int MSS, int R) {
     return min(4 * MSS, max(2*MSS, 4380)) / R;
 }
 
-int TFRCController::calculateBitrate(double R_sample, bool* newSlowStart) {
+int TFRCController::calculateBitrate(double R_sample) {
     // Adapted from https://tools.ietf.org/html/rfc5348#section-3.1
     // s = segment size, R = round trip time, p = fraction of packets lost
 
@@ -71,31 +70,20 @@ int TFRCController::calculateBitrate(double R_sample, bool* newSlowStart) {
 
     bitrate = max(min(bitrate, BITRATE_MAX), BITRATE_MIN);
 
-    if (!slowStart) {
-        bitrate = bitrate * R_sqmean / sqrt(R_sample);
-        fflush(stdout);
-    }
+    bitrate = bitrate * R_sqmean / sqrt(R_sample);
 
-    int max_change = BITRATE_CHANGE_MAX;
-    if (slowStart) max_change = currentBitrate * BITRATE_CHANGE_MAX_SLOWSTART;
+    int max_change = currentBitrate * BITRATE_CHANGE_MAX;
 
     // Close to last collapse, half max change
     // But if collapse was premature, allow to go past it quickly
-    if (currentBitrate > lastCollapse * 0.85 && currentBitrate < lastCollapse) {
+    if (peak->close(currentBitrate)) {
         max_change /= 4;
+        printf("I'm creeping\n");
         fflush(stdout);
     }
     bitrate = min(bitrate, currentBitrate + max_change);
 
-    if (bitrate <= currentBitrate * 0.85 || bitrate == BITRATE_MIN) {
-        printf("Collapse at %d, as bitrate is %d\n", currentBitrate, bitrate);
-        fflush(stdout);
-
-        *newSlowStart = false;
-        lastCollapse = currentBitrate;
-    }
-
-    bitrate = max(bitrate, currentBitrate/1.5);
+    bitrate = max(bitrate, (int) (currentBitrate/1.5));
 
     bitrate = max(min(bitrate, BITRATE_MAX), BITRATE_MIN);
 
@@ -157,4 +145,22 @@ double PacketLossTracker::get() {
 void PacketLossTracker::reset() {
     n = 0;
     loss = 0;
+}
+
+void PeakTracker::add(int bitrate) {
+    if (lastBitrate < currentBitrate && currentBitrate > bitrate) {
+        peak = currentBitrate;
+        printf("peak of %d\n", peak);
+        fflush(stdout);
+    }
+    lastBitrate = currentBitrate;
+    currentBitrate = bitrate;
+}
+
+int PeakTracker::get() {
+    return peak;
+}
+
+bool PeakTracker::close(int bitrate) {
+    return bitrate > get() * 0.85 && bitrate < get();
 }
