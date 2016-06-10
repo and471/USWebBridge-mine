@@ -44,8 +44,6 @@ void TFRCController::onRTCPReceiverReport(rtcp_rr* rr, struct timeval arrival) {
 
 
         bitrateChange(bitrate);
-
-        lastChange = currentBitrate - bitrate;
         lastChanged = getMilliseconds();
 
         packetLoss->reset();
@@ -78,8 +76,6 @@ int TFRCController::calculateBitrate(double R_sample) {
     // But if collapse was premature, allow to go past it quickly
     if (peak->close(currentBitrate)) {
         max_change /= 4;
-        printf("I'm creeping\n");
-        fflush(stdout);
     }
     bitrate = min(bitrate, currentBitrate + max_change);
 
@@ -150,8 +146,6 @@ void PacketLossTracker::reset() {
 void PeakTracker::add(int bitrate) {
     if (lastBitrate < currentBitrate && currentBitrate > bitrate) {
         peak = currentBitrate;
-        printf("peak of %d\n", peak);
-        fflush(stdout);
     }
     lastBitrate = currentBitrate;
     currentBitrate = bitrate;

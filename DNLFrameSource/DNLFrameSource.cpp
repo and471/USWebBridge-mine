@@ -49,9 +49,8 @@ void DNLFrameSource::getPNG(DNLImage::Pointer image, char** data, size_t* size) 
     resampler->SetInputData(imageData);
 
     // Set spacing to be consistent with imageData
-    double spacing[3];
-    imageData->GetSpacing(spacing);
-    resampler->SetOutputSpacing(spacing[0], spacing[0], spacing[0]);
+    double spacing = getSpacing(image);
+    resampler->SetOutputSpacing(spacing, spacing, spacing);
 
     // Select a slice for 3D imageData
     if (image->GetNDimensions() == 3) {
@@ -123,6 +122,11 @@ ImageMetadata DNLFrameSource::getImageMetadata(DNLImage::Pointer image) {
         metadata.orientation[i] = probe[i+3];
     }
 
+    std::vector<double> forces = image->GetForceData();
+    for (int i = 0; i < 6; i++) {
+        metadata.forces[i] = forces[i];
+    }
+
     return metadata;
 }
 
@@ -139,4 +143,11 @@ void DNLFrameSource::checkNSlicesChanged(vtkSmartPointer<vtkImageData> imageData
 
 int DNLFrameSource::getNSlices() {
     return this->nSlices;
+}
+
+double DNLFrameSource::getSpacing(DNLImage::Pointer image) {
+    // Choose the X spacing to be spacing for all directions
+    double spacing[3];
+    image->GetVTKImage()->GetSpacing(spacing);
+    return spacing[0];
 }

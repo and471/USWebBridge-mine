@@ -77,17 +77,17 @@ void GstUltrasoundImagePipeline::createGstPipeline() {
 
     // Realtime profile
     videoenc->property("deadline", 1);
-    videoenc->property("cpu-used", 4);
+    videoenc->property("cpu-used", 10);
     videoenc->property("lag-in-frames", 0);
     videoenc->property("error-resilient", 1);
     videoenc->property("keyframe-max-dist", 8);
     videoenc->property("static-threshold", 800);
 
     videoenc->property("min-quantizer", 8);
-    videoenc->property("max-quantizer", 50);
+    videoenc->property("max-quantizer", 40);
 
 
-    videoenc->property("target-bitrate", 500*1000);
+    videoenc->property("target-bitrate", 200*1000);
 
     payloader->property("mtu", 1024);
 

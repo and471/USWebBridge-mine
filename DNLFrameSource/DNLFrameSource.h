@@ -27,6 +27,7 @@ private:
     PatientMetadata getPatientMetadata(DNLImage::Pointer image);
     ImageMetadata getImageMetadata(DNLImage::Pointer image);
     void checkNSlicesChanged(vtkSmartPointer<vtkImageData> imageData);
+    double getSpacing(DNLImage::Pointer image);
 
     vtkPNGWriter* pngWriter;
 };

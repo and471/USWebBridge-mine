@@ -43,7 +43,7 @@ function RegionSelect(canvas) {
 
     this.selection = null;
     this.mousedown = false;
-    this.enabled = false;
+    this.enabled = RegionSelect.DISABLED;
 
     this.canvas.mousemove(this._on_mousemove.bind(this))
                .mousedown(this._on_mousedown.bind(this))
@@ -55,17 +55,18 @@ function RegionSelect(canvas) {
 RegionSelect.prototype.enable = function() {
     this.canvas.css("cursor", "crosshair");
     this.selection = Selection.reset();
-    this.enabled = true;
+    this.enabled = RegionSelect.ENABLED;
+};
+
+RegionSelect.prototype.stopInput = function() {
+    this.canvas.css("cursor", "default");
+    this.enabled = RegionSelect.ENABLED_NOINPUT;
 };
 
 RegionSelect.prototype.disable = function() {
-    this.canvas.css("cursor", "default");
-    this.enabled = false;
-};
-
-RegionSelect.prototype.disableAndClear = function() {
-    this.disable();
+    this.stopInput();
     this.selection = null;
+    this.enabled = RegionSelect.DISABLED;
 };
 
 
@@ -86,7 +87,7 @@ RegionSelect.prototype.draw = function(context) {
 },
 
 RegionSelect.prototype._on_mousemove = function(event) {
-    if (!this.enabled) return;
+    if (this.enabled != RegionSelect.ENABLED) return;
     if (!this.mousedown) return;
     this._fix_event(event);
 
@@ -95,7 +96,7 @@ RegionSelect.prototype._on_mousemove = function(event) {
 },
 
 RegionSelect.prototype._on_mousedown = function(event) {
-    if (!this.enabled) return;
+    if (this.enabled != RegionSelect.ENABLED) return;
     this._fix_event(event);
     this.mousedown = true;
 
@@ -105,7 +106,7 @@ RegionSelect.prototype._on_mousedown = function(event) {
 },
 
 RegionSelect.prototype._on_mouseup = function(event) {
-    if (!this.enabled) return;
+    if (this.enabled != RegionSelect.ENABLED) return;
     this._fix_event(event);
 
     if (this.mousedown) {
@@ -115,7 +116,7 @@ RegionSelect.prototype._on_mouseup = function(event) {
     }
 
     this.mousedown = false;
-    this.disable();
+    this.stopInput();
 }
 
 RegionSelect.prototype._request_draw = function() {
@@ -139,3 +140,6 @@ RegionSelect.prototype._fix_event = function(event) {
 RegionSelect.prototype.requestDraw = function(cb) { this.requestDrawCB = cb; }
 RegionSelect.prototype.newSelection = function(cb) { this.newSelectionCB = cb; }
 
+RegionSelect.ENABLED = 1;
+RegionSelect.ENABLED_NOINPUT = 2;
+RegionSelect.DISABLED = 3;

@@ -2,7 +2,7 @@
 #define TFRCCONTROLLER_H
 
 #define BITRATE_MIN (200 * 1000)
-#define BITRATE_MAX (2   * 1000 * 1000)
+#define BITRATE_MAX (3   * 1000 * 1000)
 
 class PacketLossTracker {
 
@@ -65,10 +65,8 @@ private:
     PacketLossTracker* packetLoss = new PacketLossTracker();
 
     int currentBitrate = BITRATE_MIN;
-    int lastCollapse = BITRATE_MAX;
     long int lastChanged = -1;
     long int start = -1;
-    int lastChange = 0;
 
     PeakTracker* peak = new PeakTracker();
 

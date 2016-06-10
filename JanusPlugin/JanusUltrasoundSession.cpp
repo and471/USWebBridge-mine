@@ -47,9 +47,12 @@ void JanusUltrasoundSession::onNewImageMetadata(ImageMetadata metadata) {
 
     std::vector<double> position(std::begin(metadata.position), std::end(metadata.position));
     std::vector<double> orientation(std::begin(metadata.orientation), std::end(metadata.orientation));
+    std::vector<double> forces(std::begin(metadata.forces), std::end(metadata.forces));
 
     obj["position"] = position;
     obj["orientation"] = orientation;
+    obj["spacing"] = metadata.spacing;
+    obj["forces"] = forces;
 
     sendMethod(obj, METHOD_NEW_IMAGE_METADATA);
 }

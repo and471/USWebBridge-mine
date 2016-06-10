@@ -70,7 +70,7 @@ header {
     		flex-direction: column;
 		}
 
-		$details-width: 300px;
+		$details-width: 330px;
 		#details-col {
 			height: 100%;
 			float: right;
@@ -136,6 +136,14 @@ header {
 		    width: calc(100% - #{$spacing*2});
 		    opacity: 0.9;
 		    z-index: 2;
+		    text-align: center;
+		    padding: $spacing;
+		    margin: auto;
+
+		    &.length {
+		    	left: $spacing;
+		    	width: auto;
+		    }
     	}
     }
 	
@@ -355,6 +363,28 @@ header {
 	background-color: #da7d15;
     border-color: #ff931a;
     color: #ffffff;
-    text-align: center;
 }
 
+.alert-dark {
+	background-color: #3c3c3c;
+    border-color: #0c0c0c;
+    color: #ffffff;
+}
+
+.probe {
+	position: relative;
+	margin: $spacing;
+
+	canvas {
+		height: 100% !important;
+		width: 100% !important;	
+	}
+
+	.overlay {
+		position: absolute;
+	    
+	    top: 0;
+	    left: 0;
+
+	}
+}

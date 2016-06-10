@@ -5,7 +5,7 @@ $(document).ready(function() {
 
 
 function Controller() {
-	this.video = new VideoController($("#video-container"));
+	this.video = new VideoController($("#video-container"),  $("#video-wrapper"));
 	this.video.crop(this.onCrop.bind(this));
 
 	this.webrtc = new WebRTCController();
@@ -46,8 +46,11 @@ Controller.prototype.initUI = function() {
 		$("#probe-visualisation").hide();
 	}
 
-	new ToggleButton($("#freeze"), "Freeze", this.togglePause.bind(this));
-	new ToggleButton($("#enhance-region"), "Enhance Region", this.toggleEnhance.bind(this));
+	new ToggleButton($("#freeze"), this.togglePause.bind(this));
+	new ToggleButton($("#enhance-region"), this.toggleEnhance.bind(this));
+	var toggleCalipers = new ToggleButton($("#calipers"), this.toggleCalipers.bind(this));
+
+	this.video.setCalipersToggle(toggleCalipers);
 
 	this.paused = false;
 	this.enhanced = false;
@@ -69,6 +72,8 @@ Controller.prototype.onNewPatientMetadata = function(patient) {
 
 Controller.prototype.onNewImageMetadata = function(metadata) {
 	this.probe.setPositionOrientation(metadata["position"], metadata["orientation"]);
+	this.probe.setForces(metadata["forces"]);
+	this.video.setPixelSize(metadata["spacing"]);
 }
 
 Controller.prototype.onNSlicesChanged = function(nSlices) {
@@ -137,5 +142,13 @@ Controller.prototype.toggleEnhance = function(toggled) {
 		this.video.enableCrop();
 	} else {
 		this.video.disableCrop();
+	}
+}
+
+Controller.prototype.toggleCalipers = function(toggled) {
+	if (toggled) {
+		this.video.enableCalipers();
+	} else {
+		this.video.disableCalipers();
 	}
 }

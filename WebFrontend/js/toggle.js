@@ -1,7 +1,6 @@
-function ToggleButton(button, textNormal, callback) {
+function ToggleButton(button, callback) {
     this.button = button;
     this.toggled = false;
-    this.texNormal = textNormal;
     this.callback = callback;
 
     this.button.click(this.onToggle.bind(this));
