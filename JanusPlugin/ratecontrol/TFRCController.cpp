@@ -25,7 +25,7 @@ void TFRCController::onRTCPReceiverReport(rtcp_rr* rr, struct timeval arrival) {
     updateRTT(rtt);
 
     uint32_t fractionLostFP = ntohl(rr->rb[0].flcnpl) >> 24;
-    p = fractionLostFP / 256.;
+    packetLoss->add(fractionLostFP / 256.);
 
     // If estimated RTT is not yet available, don't calculate bitrate
     if (R == -1) return;
@@ -47,6 +47,7 @@ void TFRCController::onRTCPReceiverReport(rtcp_rr* rr, struct timeval arrival) {
         lastChange = currentBitrate - bitrate;
         lastChanged = getMilliseconds();
 
+        packetLoss->reset();
         currentBitrate = bitrate;
     }
 
@@ -62,7 +63,7 @@ int TFRCController::calculateBitrate(double R_sample, bool* newSlowStart) {
     // s = segment size, R = round trip time, p = fraction of packets lost
 
     // Assume a minute packet loss
-    p = (p == 0) ? 0.001 : p;
+    double p = packetLoss->get();
 
     int bitrate = 8. * s / (
         R * (sqrt(2.*p/3.) + 12.*sqrt(3.*p/8.)*p*(1.+32.*p*p))
@@ -80,13 +81,13 @@ int TFRCController::calculateBitrate(double R_sample, bool* newSlowStart) {
 
     // Close to last collapse, half max change
     // But if collapse was premature, allow to go past it quickly
-    if (currentBitrate > lastCollapse * 0.75 && currentBitrate < lastCollapse) {
+    if (currentBitrate > lastCollapse * 0.85 && currentBitrate < lastCollapse) {
         max_change /= 4;
         fflush(stdout);
     }
     bitrate = min(bitrate, currentBitrate + max_change);
 
-    if (bitrate <= currentBitrate * 0.75 || bitrate == BITRATE_MIN) {
+    if (bitrate <= currentBitrate * 0.85 || bitrate == BITRATE_MIN) {
         printf("Collapse at %d, as bitrate is %d\n", currentBitrate, bitrate);
         fflush(stdout);
 
@@ -140,4 +141,20 @@ long int TFRCController::getMilliseconds() {
     struct timeval time;
     gettimeofday(&time, NULL);
     return time.tv_sec*1e3 + time.tv_usec*1e-3;
+}
+
+
+void PacketLossTracker::add(double loss) {
+    this->loss += loss;
+    n++;
+}
+
+double PacketLossTracker::get() {
+    double p = loss/n;
+    return (p == 0) ? 0.001 : p;
+}
+
+void PacketLossTracker::reset() {
+    n = 0;
+    loss = 0;
 }

@@ -2,6 +2,18 @@
 #define TFRCCONTROLLER_H
 
 
+class PacketLossTracker {
+
+public:
+    void add(double loss);
+    double get();
+    void reset();
+private:
+    int loss = 0;
+    int n = 0;
+
+};
+
 class TFRCController : public RateController
 {
 public:
@@ -16,7 +28,7 @@ private:
 
     const int CHANGE_INTERVAL_DECREASE = 3000;
     const int CHANGE_INTERVAL_INCREASE = 4500;
-    const int CHANGE_INTERVAL_SLOWSTART = 2000;
+    const int CHANGE_INTERVAL_SLOWSTART = 1000;
 
     int calculateInitialBitrate(int MSS, int R);
     int calculateBitrate(double R_sample, bool* newSlowStart);
@@ -39,7 +51,7 @@ private:
     int s = 1024;
 
     // Fraction of packet's lost
-    double p = 0;
+    PacketLossTracker* packetLoss = new PacketLossTracker();
 
     int currentBitrate = BITRATE_MIN;
     int lastCollapse = BITRATE_MAX;
@@ -49,5 +61,6 @@ private:
 
     bool slowStart = true;
 };
+
 
 #endif
