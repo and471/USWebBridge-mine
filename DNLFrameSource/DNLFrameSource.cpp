@@ -127,6 +127,8 @@ ImageMetadata DNLFrameSource::getImageMetadata(DNLImage::Pointer image) {
         metadata.forces[i] = forces[i];
     }
 
+    metadata.spacing = getSpacing(image);
+
     return metadata;
 }
 

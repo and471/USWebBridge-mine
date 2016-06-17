@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 3.5.0, 2016-06-10T17:48:17. -->
+<!-- Written by QtCreator 3.5.0, 2016-06-17T16:34:42. -->
 <qtcreator>
  <data>
   <variable>EnvironmentId</variable>
@@ -253,7 +253,7 @@
     </valuelist>
     <value type="int" key="PE.EnvironmentAspect.Base">0</value>
     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes">
-     <value type="QString">DNLIMAGESOURCE=/home/andrew/Files/Programming/Project/2DSweep</value>
+     <value type="QString">DNLIMAGESOURCE=/home/andrew/Files/Programming/Project/forAndrew2D</value>
     </valuelist>
     <value type="QString" key="ProjectExplorer.CustomExecutableRunConfiguration.Arguments">-F etc/janus/ -d 0</value>
     <value type="QString" key="ProjectExplorer.CustomExecutableRunConfiguration.Executable">/home/andrew/Files/Programming/Project/Janus/install/bin/janus</value>

@@ -26,6 +26,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
 set (SRCS
  FrameExchange.cpp
  GstUltrasoundImagePipeline.cpp
+ StreamAdaptor.cpp
 )
 
 add_library(GstPipeline

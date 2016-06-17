@@ -7,11 +7,13 @@
 #include <functional>
 #include <thread>
 #include "FrameExchange.h"
+#include "StreamAdaptor.h"
 #include <USPipelineInterface/UltrasoundImagePipeline.h>
 #include <USPipelineInterface/UltrasoundController.h>
 #include <USPipelineInterface/PatientMetadata.h>
 #include <USPipelineInterface/ImageMetadata.h>
 #include <USPipelineInterface/FrameSource.h>
+
 
 class GstUltrasoundImagePipeline : public UltrasoundImagePipeline
 {
@@ -40,13 +42,12 @@ public:
     void setOnNewImageMetadataCallback(std::function<void(ImageMetadata)> cb);
 
     void setFPS(int fps);
-    void getQPBounds(int* min, int* max);
     void setBitrate(int bitrate);
-
 
 private:
     FrameSource* frame_source;
     FrameExchange* exchange;
+    StreamAdaptor* streamAdaptor;
 
     bool running = false;
     PatientMetadata patient;

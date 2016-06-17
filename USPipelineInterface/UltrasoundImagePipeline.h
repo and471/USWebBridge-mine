@@ -24,7 +24,6 @@ public:
     virtual void crop(int left, int right, int top, int bottom) =0;
 
     virtual void setFPS(int fps) =0;
-    virtual void getQPBounds(int* min, int* max) =0;
     virtual void setBitrate(int bitrate) =0;
 
 protected:

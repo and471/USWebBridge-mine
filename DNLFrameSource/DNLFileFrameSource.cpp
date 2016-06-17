@@ -43,6 +43,7 @@ void DNLFileFrameSource::GenerateImagesThread() {
             reader->SetFilename(name);
             reader->Read();
 
+
             DNLImage::Pointer image = reader->GetDNLImage();
             this->onImage(image);
 
@@ -55,7 +56,10 @@ void DNLFileFrameSource::GenerateImagesThread() {
                 framerate = 3;
             }
 
-            std::this_thread::sleep_for(std::chrono::milliseconds((int) ((1./framerate)*1000)));
+            struct timespec tim, tim2;
+            tim.tv_sec = 0;
+            tim.tv_nsec = 62500000;
+            nanosleep(&tim , &tim2);
         }
     }
 }

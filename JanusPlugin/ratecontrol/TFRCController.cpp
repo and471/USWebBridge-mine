@@ -3,11 +3,8 @@
 #include <math.h>
 #include <sys/time.h>
 
-int min(int a, int b) { return (a < b) ? a : b; }
-int max(int a, int b) { return (a > b) ? a : b; }
-
-double min(double a, double b) { return (a < b) ? a : b; }
-double max(double a, double b) { return (a > b) ? a : b; }
+#define min(a, b) ((a < b) ? a : b)
+#define max(a, b) ((a > b) ? a : b)
 
 void TFRCController::onRTCPReceiverReport(rtcp_rr* rr, struct timeval arrival) {
     if (start == -1) start = getMilliseconds();
@@ -79,7 +76,7 @@ int TFRCController::calculateBitrate(double R_sample) {
     }
     bitrate = min(bitrate, currentBitrate + max_change);
 
-    bitrate = max(bitrate, (int) (currentBitrate/1.5));
+    bitrate = max(bitrate, (int) (currentBitrate * (2./3.)));
 
     bitrate = max(min(bitrate, BITRATE_MAX), BITRATE_MIN);
 

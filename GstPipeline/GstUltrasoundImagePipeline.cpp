@@ -4,11 +4,16 @@
 
 #include "GstUltrasoundImagePipeline.h"
 #include "FrameExchange.h"
+#include "StreamAdaptor.h"
 #include <USPipelineInterface/FrameSource.h>
 #include <glib.h>
 #include <functional>
 #include <cstring>
 #include <mutex>
+
+#include <math.h>
+#include <sys/time.h>
+
 
 static bool initialised = false;
 static std::mutex creationMutex;
@@ -24,13 +29,13 @@ GstUltrasoundImagePipeline::GstUltrasoundImagePipeline(UltrasoundController* con
 
     thread = nullptr;
     exchange = new FrameExchange();
+    streamAdaptor = new StreamAdaptor();
 
     controller->setOnSetSliceCallback(
         std::bind(&GstUltrasoundImagePipeline::onSetSlice, this, std::placeholders::_1)
     );
 
-    fps = 10;
-    qp = 30;
+    fps = 8;
 
     port = getFreePort();
     createGstPipeline();
@@ -86,8 +91,7 @@ void GstUltrasoundImagePipeline::createGstPipeline() {
     videoenc->property("min-quantizer", 8);
     videoenc->property("max-quantizer", 40);
 
-
-    videoenc->property("target-bitrate", 200*1000);
+    videoenc->property("target-bitrate", 1200*1000);
 
     payloader->property("mtu", 1024);
 
@@ -122,6 +126,8 @@ void GstUltrasoundImagePipeline::setFrameSource(FrameSource* frame_source) {
 }
 
 void GstUltrasoundImagePipeline::start() {
+    startTime = getMilliseconds();
+
     if (thread != nullptr) {
         fprintf(stderr, "Cannot start new thread: thread is already running\n");
     }
@@ -151,9 +157,8 @@ void GstUltrasoundImagePipeline::stop() {
 }
 
 void GstUltrasoundImagePipeline::onAppSrcNeedData(guint _) {
-    Frame* frame = exchange->get_frame();
 
-    int queued = appsrc->property_current_level_bytes();
+    Frame* frame = exchange->get_frame();
 
     Glib::RefPtr<Gst::Buffer> buffer = Gst::Buffer::create(frame->getSize());
     Glib::RefPtr<Gst::MapInfo> info(new Gst::MapInfo());
@@ -216,6 +221,12 @@ void GstUltrasoundImagePipeline::crop(int left, int right, int top, int bottom) 
 }
 
 void GstUltrasoundImagePipeline::onNSlicesChanged(int nSlices) {
+    if (nSlices > 1) {
+        streamAdaptor->setProfile(_3D);
+    } else {
+        streamAdaptor->setProfile(_2D);
+    }
+
     controller->onNSlicesChanged(nSlices);
 }
 
@@ -247,32 +258,17 @@ void GstUltrasoundImagePipeline::setFPS(int fps) {
     this->fps = fps;
 }
 
-void GstUltrasoundImagePipeline::getQPBounds(int* min, int* max) {
-    *min = 0;
-    *max = 63;
-}
-
 void GstUltrasoundImagePipeline::setBitrate(int bitrate) {
     if (!videoenc) return;
     if (bitrate < 1000) return;
 
     double error = 0.1;
 
-    printf("Set bitrate is: %g mb/s                    (with error, %g) \n", (bitrate / 1000000.), (bitrate * (1-error) / 1000000.));
-    fflush(stdout);
-
-    videoenc->property("target-bitrate", bitrate * (1-error));
-
-    /*
-    int min, max;
-    getQPBounds(&min, &max);
-
-    if (!(min <= qp && qp <= max)) {
-        fprintf(stderr, "QP parameter %d not within %d - %d", qp, min, max);
-        return;
+    int FPS = streamAdaptor->getFPS(bitrate);
+    if (FPS != -1) {
+        setFPS(FPS);
     }
 
-    this->qp = qp;
-    //videoenc->property("min-quantizer", qp);
-    //videoenc->property("max-quantizer", qp);*/
+    bitrate = bitrate * (1-error);
+    videoenc->property("target-bitrate", bitrate);
 }
